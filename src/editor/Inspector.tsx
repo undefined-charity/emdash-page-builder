@@ -243,6 +243,7 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 					<Field label="Look">
 						<Select value={String(a.variant ?? "")} onChange={(variant) => set({ variant })} options={config.sectionStyles.map((s) => ({ label: s.label, value: s.name }))} />
 					</Field>
+					<Toggle checked={a.fullWidth === true} onChange={(fullWidth) => set({ fullWidth })} label="Full width: edge to edge across the window" />
 					<div className="pb-field">
 						<span className="pb-field__label">
 							Background video
@@ -531,6 +532,83 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 			)}
 
 			{type === "pbGallery" && <GallerySettings value={a} set={set} onPickImages={onPickImages} />}
+
+			{type === "pbMap" && (
+				<Group title="Map">
+					<Field label="Address or place" hint="As you'd type it into a maps app.">
+						<TextInput value={String(a.query ?? "")} placeholder="Gallery Erato, Seattle" lazy onChange={(query) => set({ query })} />
+					</Field>
+					<Field label="Zoom">
+						<Segmented
+							value={String(a.zoom ?? 15)}
+							onChange={(v) => set({ zoom: Number(v) })}
+							options={[
+								{ label: "City", value: "11" },
+								{ label: "Area", value: "13" },
+								{ label: "Street", value: "15" },
+								{ label: "Close", value: "17" },
+							]}
+						/>
+					</Field>
+					<LengthField label="Height" value={String(a.height ?? "360px")} onChange={(height) => set({ height: height ?? "360px" })} presets={["240px", "360px", "480px", "60vh"]} />
+				</Group>
+			)}
+
+			{type === "pbEmbed" && (
+				<Group title="Embed">
+					<Segmented
+						value={a.mode === "html" ? "html" : "url"}
+						onChange={(mode) => set({ mode })}
+						options={[
+							{ label: "Address", value: "url", title: "Another site's embed address (the src of its iframe)" },
+							{ label: "HTML", value: "html", title: "Paste embed code or HTML" },
+						]}
+					/>
+					{a.mode === "html" ? (
+						<Field label="HTML" hint="Runs on its own, apart from the page: it can't change the page or see anyone's login.">
+							<TextInput value={String(a.html ?? "")} multiline lazy onChange={(html) => set({ html })} />
+						</Field>
+					) : (
+						<Field label="Address" hint="The https:// address of the thing to show, such as the src of a site's iframe embed code.">
+							<TextInput value={String(a.url ?? "")} placeholder="https://…" lazy onChange={(url) => set({ url: url.trim() })} />
+						</Field>
+					)}
+					<LengthField label="Height" value={String(a.height ?? "400px")} onChange={(height) => set({ height: height ?? "400px" })} presets={["200px", "400px", "600px", "80vh"]} />
+					<Field label="Title" hint="Describes it for screen readers.">
+						<TextInput value={String(a.title ?? "")} lazy onChange={(title) => set({ title })} />
+					</Field>
+				</Group>
+			)}
+
+			{type === "pbShape" && (
+				<Group title="Shape">
+					<Segmented
+						value={String(a.shape ?? "box")}
+						onChange={(shape) => set({ shape })}
+						options={[
+							{ label: "Box", value: "box" },
+							{ label: "Circle", value: "circle" },
+							{ label: "Line", value: "line" },
+						]}
+					/>
+					<ColorField label="Colour" value={a.color === "currentColor" ? undefined : String(a.color ?? "")} onChange={(color) => set({ color: color ?? "currentColor" })} palette={config.palette} placeholder="text colour" />
+					<LengthField label="Width" value={a.width ? String(a.width) : undefined} onChange={(width) => set({ width: width ?? "" })} presets={a.shape === "circle" ? ["48px", "120px", "240px"] : ["25%", "50%", "100%", "200px"]} />
+					{a.shape !== "circle" && (
+						<LengthField label={a.shape === "line" ? "Thickness" : "Height"} value={a.height ? String(a.height) : undefined} onChange={(height) => set({ height: height ?? "" })} presets={a.shape === "line" ? ["1px", "2px", "4px", "8px"] : ["40px", "120px", "240px"]} />
+					)}
+					<Field label="Position">
+						<Segmented
+							value={String(a.align ?? "center")}
+							onChange={(align) => set({ align })}
+							options={[
+								{ label: "Left", value: "left" },
+								{ label: "Centre", value: "center" },
+								{ label: "Right", value: "right" },
+							]}
+						/>
+					</Field>
+				</Group>
+			)}
 
 			{type === "pbSpacer" && (
 				<Group title="Spacer">

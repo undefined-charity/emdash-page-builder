@@ -191,7 +191,7 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 		case "pb.section":
 			return {
 				type: "pbSection",
-				attrs: { ...(typeof b.variant === "string" ? { variant: b.variant } : {}), ...(typeof b.backgroundVideo === "string" ? { bgVideo: b.backgroundVideo } : {}), ...styleAttr(b) },
+				attrs: { ...(typeof b.variant === "string" ? { variant: b.variant } : {}), ...(typeof b.backgroundVideo === "string" ? { bgVideo: b.backgroundVideo } : {}), ...(b.fullWidth === true ? { fullWidth: true } : {}), ...styleAttr(b) },
 				content: nonEmpty(blocksToNodes(arr(b.content), config)) };
 		case "pb.columns": {
 			const cols = Array.isArray(b.columns) ? (b.columns as Array<Record<string, unknown>>) : [];
@@ -250,6 +250,35 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 					lightbox: b.lightbox !== false,
 					key: b._key ?? newKey(),
 					...styleAttr(b),
+				},
+			};
+		case "pb.map":
+			return {
+				type: "pbMap",
+				attrs: { query: typeof b.query === "string" ? b.query : "", zoom: typeof b.zoom === "number" ? b.zoom : 15, height: typeof b.height === "string" ? b.height : "360px", ...styleAttr(b) },
+			};
+		case "pb.embed":
+			return {
+				type: "pbEmbed",
+				attrs: {
+					mode: b.mode === "html" ? "html" : "url",
+					url: typeof b.url === "string" ? b.url : "",
+					html: typeof b.html === "string" ? b.html : "",
+					title: typeof b.title === "string" ? b.title : "",
+					height: typeof b.height === "string" ? b.height : "400px",
+					...styleAttr(b),
+				},
+			};
+		case "pb.shape":
+			return {
+				type: "pbShape",
+				attrs: {
+					shape: typeof b.shape === "string" ? b.shape : "box",
+					color: typeof b.color === "string" ? b.color : "currentColor",
+					width: typeof b.width === "string" ? b.width : "",
+					height: typeof b.height === "string" ? b.height : "",
+					align: typeof b.align === "string" ? b.align : "center",
+					...hideAttr(b),
 				},
 			};
 		case "pb.stack": {

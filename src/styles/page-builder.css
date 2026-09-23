@@ -438,3 +438,69 @@ html:has(.pb-back-to-top) {
 		display: none;
 	}
 }
+
+/* Full-width strip: a section edge to edge across the window, whatever the
+   page's width. The editor sets --pb-vw to the width it leaves the page. */
+:where(.pb-section--bleed) {
+	width: var(--pb-vw, 100vw);
+	max-width: none;
+	margin-inline: calc(50% - var(--pb-vw, 100vw) / 2);
+	box-sizing: border-box;
+}
+:where(html:has(.pb-section--bleed)) body {
+	overflow-x: clip;
+}
+
+/* Map */
+:where(.pb-map) {
+	margin: 1rem 0;
+}
+:where(.pb-map iframe, .pb-map__empty) {
+	display: block;
+	width: 100%;
+	height: var(--pb-map-height, 360px);
+	border: 0;
+	border-radius: inherit;
+}
+:where(.pb-map figcaption) {
+	font-size: 0.875em;
+	margin-top: 0.4rem;
+}
+
+/* Embed */
+:where(.pb-embed) {
+	margin: 1rem 0;
+}
+:where(.pb-embed iframe, .pb-embed__empty) {
+	display: block;
+	width: 100%;
+	height: var(--pb-embed-height, 400px);
+	border: 0;
+	border-radius: inherit;
+}
+
+/* Shapes and lines */
+:where(.pb-shape) {
+	margin-block: 1rem;
+	background: var(--pb-shape-color, currentColor);
+}
+:where(.pb-shape--box) {
+	width: var(--pb-shape-width, 100%);
+	height: var(--pb-shape-height, 120px);
+	border-radius: 12px;
+}
+:where(.pb-shape--circle) {
+	width: var(--pb-shape-width, 120px);
+	aspect-ratio: 1;
+	border-radius: 50%;
+}
+:where(.pb-shape--line) {
+	width: var(--pb-shape-width, 100%);
+	height: var(--pb-shape-height, 2px);
+}
+:where(.pb-shape--center) {
+	margin-inline: auto;
+}
+:where(.pb-shape--right) {
+	margin-left: auto;
+}

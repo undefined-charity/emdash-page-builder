@@ -14,7 +14,9 @@ Content is stored as ordinary Portable Text in the entry's rich-text field, so t
   - Media: images from the media library or uploaded straight from the computer (dropped or pasted onto the page, too) — inline, centred, full-width, or floated left/right with text wrapping; drag the edges to resize
   - Video: a YouTube or Vimeo link, or an uploaded video, optionally playing by itself (muted), looping, or without controls
   - Gallery or slideshow: several images as a grid, a masonry wall, or a slideshow people swipe or scroll through (with arrows and dots where the browser supports them). Clicking an image shows it full screen. None of it needs JavaScript.
-  - Layout: sections, 2–4 columns, cards, FAQ/accordions, buttons, dividers, spacers, and layers (blocks on top of each other, such as a headline over a photo)
+  - Layout: sections (optionally full width, edge to edge across the window, or with a looping video behind them), 2–4 columns, cards, FAQ/accordions, buttons, dividers, spacers, shapes and lines, and layers (blocks on top of each other, such as a headline over a photo)
+  - Map: an address or place, from Google Maps (no API key)
+  - Embed or HTML: another site's widget by its address, or pasted HTML, always in a sandboxed frame; pasted HTML runs apart from the page, so it can't change it or reach anyone's login
   - Site blocks: anything the site renders itself — forms, a next-event panel, a ticket widget, a menu — shown as a live preview and configured in the side panel
   - Reusable blocks: save any block as shared; edit it once, it changes everywhere; detach a copy to edit it on one page only
 - **Drag handles** on every block, including blocks inside sections and columns. As a block is dragged, the page opens a gap where it will land. Drop it at the left or right edge of another block to put the two side by side in columns. <kbd>Esc</kbd> cancels.
@@ -181,12 +183,15 @@ An external block is any Portable Text type your site renders — the builder ke
 | `image` | EmDash's image block, plus `alignment` (`left`, `right`, `center`, `wide`), `displayWidth`, `link` |
 | `buttons` | EmDash's buttons block, plus a `variant` per button |
 | `break` | Divider |
-| `pb.section` | `{ variant, backgroundVideo?, content: Block[] }` (a background video uses the section's background image as its still) |
+| `pb.section` | `{ variant, fullWidth?, backgroundVideo?, content: Block[] }` (a background video uses the section's background image as its still) |
 | `pb.columns` | `{ ratio, columns: [{ content: Block[] }] }` |
 | `pb.cards` | `{ cards: [{ content: Block[] }] }` |
 | `pb.accordion` | `{ items: [{ summary, content: Block[], open }] }` |
 | `pb.video` | `{ url, mediaId?, poster?, title?, caption?, autoplay?, loop?, controls? }` |
 | `pb.gallery` | `{ layout?: "grid" \| "masonry" \| "slideshow", columns?, lightbox?, images: [{ src, mediaId?, alt?, caption?, width?, height? }] }` |
+| `pb.map` | `{ query, zoom?, height? }` |
+| `pb.embed` | `{ mode: "url" \| "html", url?, html?, title?, height? }` |
+| `pb.shape` | `{ shape: "box" \| "circle" \| "line", color?, width?, height?, align? }` |
 | `pb.stack` | `{ phoneFlow?, layers: [{ valign?, halign?, content: Block[] }] }`, back to front |
 | `pb.spacer` | `{ size: "s" \| "m" \| "l" \| "xl" }` |
 | `pb.reusable` | `{ ref }` — an entry in the reusable-blocks collection |

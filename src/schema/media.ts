@@ -148,3 +148,48 @@ export function galleryDom(attrs: Record<string, unknown>, id: string): unknown[
 		return ["figure", { class: "pb-gallery__item" }, ...children];
 	});
 }
+
+// ── Map ───────────────────────────────────────────────────────────────────────
+
+/** A map of an address or place, embedded without an API key. */
+export function mapDom(attrs: Record<string, unknown>): Dom | null {
+	const query = typeof attrs.query === "string" ? attrs.query.trim().slice(0, 300) : "";
+	if (!query) return null;
+	const zoom = Math.min(20, Math.max(3, Number(attrs.zoom) || 15));
+	const q = new URLSearchParams({ q: query, z: String(zoom), output: "embed" });
+	return ["iframe", { src: `https://maps.google.com/maps?${q}`, title: `Map of ${query}`, loading: "lazy", referrerpolicy: "no-referrer-when-downgrade", allowfullscreen: "" }];
+}
+
+export function mapLink(query: unknown): string | null {
+	return typeof query === "string" && query.trim() ? `https://www.google.com/maps/search/?${new URLSearchParams({ api: "1", query: query.trim() })}` : null;
+}
+
+// ── Embed ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Another site's widget, by address, or pasted HTML. Always in a sandboxed
+ * iframe: pasted HTML runs in an origin of its own, so it can't reach the
+ * page, its cookies or an editor's session.
+ */
+export function embedDom(attrs: Record<string, unknown>): Dom | null {
+	const title = typeof attrs.title === "string" && attrs.title ? attrs.title : "Embedded content";
+	const html = typeof attrs.html === "string" ? attrs.html : "";
+	if (attrs.mode === "html") {
+		if (!html.trim()) return null;
+		return ["iframe", { srcdoc: html, title, loading: "lazy", sandbox: "allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms" }];
+	}
+	const url = typeof attrs.url === "string" && /^https:\/\/[^\s"'<>]+$/.test(attrs.url.trim()) ? attrs.url.trim() : null;
+	if (!url) return null;
+	return [
+		"iframe",
+		{
+			src: url,
+			title,
+			loading: "lazy",
+			allow: "autoplay; encrypted-media; picture-in-picture; fullscreen; clipboard-write",
+			allowfullscreen: "",
+			// Its own origin, so same-origin is safe; it still can't navigate this page.
+			sandbox: "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-presentation",
+		},
+	];
+}

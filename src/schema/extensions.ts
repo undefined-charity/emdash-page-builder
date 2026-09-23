@@ -14,8 +14,8 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 
 import { defaultSectionStyle, findTextStyle, type BuilderConfig } from "./config.js";
-import { GALLERY_LAYOUTS, galleryDom, videoDom, videoSource } from "./media.js";
-import { blockStyleToCss, cleanBlockStyle, cleanHide, phoneStyleAttrs, safeUrl } from "./style.js";
+import { GALLERY_LAYOUTS, embedDom, galleryDom, mapDom, mapLink, videoDom, videoSource } from "./media.js";
+import { blockStyleToCss, cleanBlockStyle, cleanHide, phoneStyleAttrs, safeColor, safeLength, safeUrl } from "./style.js";
 
 const noDom = { rendered: false } as const;
 const cls = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
@@ -64,10 +64,12 @@ export const STYLABLE_TYPES = [
 	"pbLayer",
 	"pbVideo",
 	"pbGallery",
+	"pbMap",
+	"pbEmbed",
 ];
 
 /** Node types that can be hidden on phones or on desktops. */
-export const HIDEABLE_TYPES = [...STYLABLE_TYPES, "horizontalRule", "pbSpacer", "pbExternal", "pbReusable"];
+export const HIDEABLE_TYPES = [...STYLABLE_TYPES, "horizontalRule", "pbSpacer", "pbExternal", "pbReusable", "pbShape"];
 
 const BlockStyles = Extension.create({
 	name: "pbBlockStyles",
@@ -155,6 +157,8 @@ const Section = (config: BuilderConfig) =>
 				variant: { default: defaultSectionStyle(config)?.name ?? "default", ...noDom },
 				/** A looping muted video behind the section; its background image is the still picture. */
 				bgVideo: { default: "", ...noDom },
+				/** Edge to edge across the window, whatever the page's width. */
+				fullWidth: { default: false, ...noDom },
 			};
 		},
 		parseHTML: () => [{ tag: "[data-pb-section]", getAttrs: (el) => ({ variant: (el as HTMLElement).dataset.pbSection }) }],
@@ -162,7 +166,7 @@ const Section = (config: BuilderConfig) =>
 			const style = config.sectionStyles.find((s) => s.name === node.attrs.variant) ?? defaultSectionStyle(config);
 			const video = safeUrl(node.attrs.bgVideo);
 			const attrs = mergeAttributes(HTMLAttributes, {
-				class: cls("pb-section", style?.className, video && "pb-section--video"),
+				class: cls("pb-section", style?.className, video && "pb-section--video", node.attrs.fullWidth && "pb-section--bleed"),
 				"data-pb-section": style?.name ?? "default",
 			});
 			if (!video) return [style?.tag ?? "section", attrs, 0];
@@ -470,6 +474,89 @@ const Gallery = Node.create({
 	},
 });
 
+/** A map of an address or place. */
+const MapBlock = Node.create({
+	name: "pbMap",
+	group: "block",
+	atom: true,
+	draggable: true,
+	addAttributes() {
+		return {
+			query: { default: "", ...noDom },
+			zoom: { default: 15, ...noDom },
+			height: { default: "360px", ...noDom },
+		};
+	},
+	parseHTML: () => [{ tag: "figure.pb-map" }],
+	renderHTML({ node, HTMLAttributes }) {
+		const map = mapDom(node.attrs);
+		const link = mapLink(node.attrs.query);
+		return [
+			"figure",
+			mergeAttributes(HTMLAttributes, { class: "pb-map", style: `--pb-map-height: ${safeLength(node.attrs.height) ?? "360px"}` }),
+			map ?? ["div", { class: "pb-map__empty" }],
+			...(link ? [["figcaption", {}, ["a", { href: link, target: "_blank", rel: "noreferrer" }, "Open in Maps"]]] : []),
+		] as never;
+	},
+});
+
+/** Another site's widget by address, or pasted HTML, sandboxed. */
+const Embed = Node.create({
+	name: "pbEmbed",
+	group: "block",
+	atom: true,
+	draggable: true,
+	addAttributes() {
+		return {
+			mode: { default: "url", ...noDom },
+			url: { default: "", ...noDom },
+			html: { default: "", ...noDom },
+			title: { default: "", ...noDom },
+			height: { default: "400px", ...noDom },
+		};
+	},
+	parseHTML: () => [{ tag: "div.pb-embed" }],
+	renderHTML({ node, HTMLAttributes }) {
+		const frame = embedDom(node.attrs);
+		return [
+			"div",
+			mergeAttributes(HTMLAttributes, { class: "pb-embed", style: `--pb-embed-height: ${safeLength(node.attrs.height) ?? "400px"}` }),
+			frame ?? ["div", { class: "pb-embed__empty" }],
+		] as never;
+	},
+});
+
+export const SHAPES = ["box", "circle", "line"] as const;
+
+/** A decorative box, circle or line. */
+const Shape = Node.create({
+	name: "pbShape",
+	group: "block",
+	atom: true,
+	draggable: true,
+	addAttributes() {
+		return {
+			shape: { default: "box", ...noDom },
+			color: { default: "currentColor", ...noDom },
+			width: { default: "", ...noDom },
+			height: { default: "", ...noDom },
+			align: { default: "center", ...noDom },
+		};
+	},
+	parseHTML: () => [{ tag: "div.pb-shape" }],
+	renderHTML({ node, HTMLAttributes }) {
+		const a = node.attrs;
+		const shape = SHAPES.includes(a.shape) ? a.shape : "box";
+		const align = a.align === "left" || a.align === "right" ? a.align : "center";
+		const decls = [
+			`--pb-shape-color: ${safeColor(a.color) ?? "currentColor"}`,
+			safeLength(a.width) ? `--pb-shape-width: ${safeLength(a.width)}` : "",
+			safeLength(a.height) ? `--pb-shape-height: ${safeLength(a.height)}` : "",
+		].filter(Boolean);
+		return ["div", mergeAttributes(HTMLAttributes, { class: cls("pb-shape", `pb-shape--${shape}`, `pb-shape--${align}`), style: decls.join("; "), "aria-hidden": "true" })];
+	},
+});
+
 export const SPACER_SIZES = ["s", "m", "l", "xl"] as const;
 
 const Spacer = Node.create({
@@ -547,6 +634,9 @@ export function builderExtensions(config: BuilderConfig): Extensions {
 		Layer,
 		Video,
 		Gallery,
+		MapBlock,
+		Embed,
+		Shape,
 		Spacer,
 		Reusable,
 		External,

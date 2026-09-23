@@ -160,12 +160,25 @@
 }
 
 /* Videos and galleries are pictures while editing: a click selects the block. */
-.pb-editor-content :is(.pb-video__frame, .pb-gallery) > *,
+.pb-editor-content :is(.pb-video__frame, .pb-gallery, .pb-map, .pb-embed) > *,
 .pb-editor-content .pb-gallery__open {
 	pointer-events: none;
 }
-.pb-editor-content :is(.pb-video, .pb-gallery) {
+.pb-editor-content :is(.pb-video, .pb-gallery, .pb-map, .pb-embed, .pb-shape) {
 	cursor: pointer;
+}
+.pb-editor-content :is(.pb-map__empty, .pb-embed__empty) {
+	display: grid;
+	place-items: center;
+	border: 1px dashed currentColor;
+	opacity: 0.6;
+	font: 13px/1.4 system-ui, sans-serif;
+}
+.pb-editor-content .pb-map__empty::before {
+	content: "Map: type an address or place in the side panel";
+}
+.pb-editor-content .pb-embed__empty::before {
+	content: "Embed: paste an address or HTML in the side panel";
 }
 .pb-editor-content .pb-video__frame--empty {
 	aspect-ratio: 16 / 9;

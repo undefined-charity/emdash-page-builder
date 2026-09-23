@@ -47,9 +47,16 @@ function insertAndSelect(editor: Editor, node: JSONContent) {
 		return;
 	}
 	insertBlock(editor, node);
+	// The cursor ends up just after the new block, or, when inserting split a
+	// paragraph, at the start of the paragraph after it.
 	const { $from } = editor.state.selection;
-	const before = $from.nodeBefore;
-	if (before && before.type.name === node.type) editor.commands.setNodeSelection($from.pos - before.nodeSize);
+	for (const $at of [$from, $from.depth > 0 ? editor.state.doc.resolve($from.before()) : null]) {
+		const before = $at?.nodeBefore;
+		if ($at && before && before.type.name === node.type) {
+			editor.commands.setNodeSelection($at.pos - before.nodeSize);
+			return;
+		}
+	}
 }
 
 export function externalNode(block: ExternalBlock): JSONContent {
@@ -163,6 +170,47 @@ export function insertItems(config: BuilderConfig): InsertItem[] {
 						attrs: { images: images.map((i) => ({ src: i.src, mediaId: i.mediaId, alt: i.alt, width: i.width, height: i.height })), layout: "grid", columns: 3, key: newKey() },
 					}),
 				),
+		},
+		{
+			id: "map",
+			label: "Map",
+			category: "Media",
+			icon: "⌖",
+			description: "A map of an address or place",
+			keywords: ["location", "address", "directions", "venue", "google maps"],
+			run: (e) => insertAndSelect(e, { type: "pbMap", attrs: { query: "" } }),
+		},
+		{
+			id: "embed",
+			label: "Embed or HTML",
+			category: "Media",
+			icon: "</>",
+			description: "Another site's widget by its address, or pasted HTML, kept apart from the page",
+			keywords: ["iframe", "html", "code", "widget", "calendar", "spotify", "soundcloud", "form"],
+			run: (e) => insertAndSelect(e, { type: "pbEmbed", attrs: { mode: "url" } }),
+		},
+		{
+			id: "shape",
+			label: "Shape or line",
+			category: "Layout",
+			icon: "◼",
+			description: "A decorative box, circle or line",
+			keywords: ["box", "circle", "line", "rule", "decoration", "divider"],
+			run: (e) => insertAndSelect(e, { type: "pbShape", attrs: { shape: "box", color: config.palette[0]?.value ?? "currentColor" } }),
+		},
+		{
+			id: "strip",
+			label: "Full-width strip",
+			category: "Layout",
+			icon: "▬",
+			description: "A section edge to edge across the window, with its own background",
+			keywords: ["banner", "band", "bleed", "full width", "hero", "stripe"],
+			run: (e) =>
+				insertBlock(e, {
+					type: "pbSection",
+					attrs: { variant: defaultSectionStyle(config)?.name, fullWidth: true, pbStyle: { padding: "3rem 2rem" } },
+					content: [h(2, "Strip heading"), p("Write something…")],
+				}),
 		},
 		{
 			id: "section",

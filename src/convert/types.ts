@@ -61,6 +61,9 @@ export const BUILDER_TYPES = new Set([
 	"pb.stack",
 	"pb.video",
 	"pb.gallery",
+	"pb.map",
+	"pb.embed",
+	"pb.shape",
 	"pb.spacer",
 	"pb.reusable",
 ]);

@@ -335,3 +335,28 @@ test("page addresses: fixed routes, the collection's pattern, and slugs from tit
 	assert.equal(pageUrl(pages, null, "/{slug}"), null);
 	assert.equal(slugify("  Crème Brûlée & DJs!  "), "creme-brulee-djs");
 });
+
+test("maps, embeds, shapes and full-width strips round-trip and render safely", () => {
+	const blocks = [
+		{ _type: "pb.map", _key: "m", query: "Gallery Erato, Seattle", zoom: 13 },
+		{ _type: "pb.embed", _key: "e1", mode: "url", url: "https://open.spotify.com/embed/playlist/x", height: "152px" },
+		{ _type: "pb.embed", _key: "e2", mode: "html", html: "<b>hi</b><script>alert(1)</script>" },
+		{ _type: "pb.shape", _key: "s", shape: "circle", color: "#ff00d2", width: "80px", align: "left" },
+		{ _type: "pb.section", _key: "f", fullWidth: true, content: [{ _type: "block", _key: "b", style: "normal", markDefs: [], children: [span("Strip")] }] },
+	];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(normalize(once), normalize(blocks));
+	const html = renderDocument(blocks, config).parts.join("");
+	assert.match(html, /<iframe src="https:\/\/maps\.google\.com\/maps\?q=Gallery\+Erato%2C\+Seattle&amp;z=13&amp;output=embed"/);
+	assert.match(html, /href="https:\/\/www\.google\.com\/maps\/search\/\?api=1&amp;query=Gallery\+Erato%2C\+Seattle"/);
+	// Pasted HTML: escaped into srcdoc, in a sandbox without same-origin.
+	assert.match(html, /srcdoc="&lt;b&gt;hi&lt;\/b&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;" [^>]*sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-forms"/);
+	assert.ok(!/<script>/.test(html), html);
+	assert.match(html, /class="pb-shape pb-shape--circle pb-shape--left" style="--pb-shape-color: #ff00d2; --pb-shape-width: 80px"/);
+	assert.match(html, /class="pb-section pb-section--bleed"/);
+});
+
+test("an embed address must be https", () => {
+	const html = renderDocument([{ _type: "pb.embed", mode: "url", url: "javascript:alert(1)" }, { _type: "pb.embed", mode: "url", url: "http://x.test" }], config).parts.join("");
+	assert.ok(!html.includes("<iframe"), html);
+});

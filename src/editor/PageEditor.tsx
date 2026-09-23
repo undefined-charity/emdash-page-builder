@@ -574,9 +574,19 @@ export function PageEditor(props: PageEditorProps) {
 			body.marginRight = `${panel}px`;
 		}
 		body.paddingBottom = inspectorOpen && narrow ? "45vh" : prev.paddingBottom;
+		// The width full-width sections stretch to: the page's, as laid out
+		// (the panel narrows it on most sites), or the phone's.
+		const root = document.documentElement.style;
+		const measure = () => root.setProperty("--pb-vw", `${device === "phone" ? PHONE_WIDTH : document.body.clientWidth}px`);
+		measure();
+		// The body's width animates as the panel opens and closes; follow it.
+		const sized = new ResizeObserver(measure);
+		sized.observe(document.body);
 		return () => {
+			sized.disconnect();
 			if (centre) window.removeEventListener("resize", centre);
 			Object.assign(body, prev);
+			root.removeProperty("--pb-vw");
 		};
 	}, [inspectorOpen, narrow, isActive, device]);
 

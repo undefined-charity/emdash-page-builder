@@ -163,6 +163,7 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 				_key: newKey(),
 				...(a.variant ? { variant: a.variant } : {}),
 				...(a.bgVideo ? { backgroundVideo: a.bgVideo } : {}),
+				...(a.fullWidth ? { fullWidth: true } : {}),
 				...styleOf(a),
 				content: nested(node.content, config),
 			});
@@ -225,6 +226,32 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 				...(typeof a.columns === "number" && a.columns !== 3 ? { columns: a.columns } : {}),
 				...(a.lightbox === false ? { lightbox: false } : {}),
 				...styleOf(a),
+			});
+			return;
+		case "pbMap":
+			out.push({ _type: "pb.map", _key: newKey(), query: a.query ?? "", ...(a.zoom !== 15 ? { zoom: a.zoom } : {}), ...(a.height && a.height !== "360px" ? { height: a.height } : {}), ...styleOf(a) });
+			return;
+		case "pbEmbed":
+			out.push({
+				_type: "pb.embed",
+				_key: newKey(),
+				mode: a.mode === "html" ? "html" : "url",
+				...(a.mode === "html" ? { html: a.html ?? "" } : { url: a.url ?? "" }),
+				...(a.title ? { title: a.title } : {}),
+				...(a.height && a.height !== "400px" ? { height: a.height } : {}),
+				...styleOf(a),
+			});
+			return;
+		case "pbShape":
+			out.push({
+				_type: "pb.shape",
+				_key: newKey(),
+				shape: a.shape ?? "box",
+				...(a.color && a.color !== "currentColor" ? { color: a.color } : {}),
+				...(a.width ? { width: a.width } : {}),
+				...(a.height ? { height: a.height } : {}),
+				...(a.align && a.align !== "center" ? { align: a.align } : {}),
+				...hideOf(a),
 			});
 			return;
 		case "pbStack":
