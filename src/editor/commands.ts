@@ -159,6 +159,25 @@ export function insertItems(config: BuilderConfig): InsertItem[] {
 				}),
 		},
 		{
+			id: "layers",
+			label: "Layers (text over an image)",
+			category: "Layout",
+			icon: "◰",
+			description: "Blocks on top of each other: pick a background image, then write over it",
+			keywords: ["stack", "overlay", "overlap", "hero", "banner", "text over image", "layer"],
+			run: (e, ctx) =>
+				ctx.openMedia((attrs) =>
+					insertBlock(e, {
+						type: "pbStack",
+						attrs: { phoneFlow: false },
+						content: [
+							{ type: "pbLayer", content: [{ type: "pbImage", attrs: { ...attrs, align: "wide" } }] },
+							{ type: "pbLayer", attrs: { valign: "center", halign: "center" }, content: [h(2, "Headline"), p("Write over the image.")] },
+						],
+					}),
+				),
+		},
+		{
 			id: "accordion",
 			label: "FAQ / accordion",
 			category: "Layout",

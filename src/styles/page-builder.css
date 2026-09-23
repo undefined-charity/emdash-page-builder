@@ -157,3 +157,40 @@ html:has(.pb-back-to-top) {
 		scroll-behavior: auto;
 	}
 }
+
+/* Layers: every layer in the same grid cell, later ones in front. An empty
+   part of a layer lets clicks through to the layers behind it. */
+:where(.pb-stack) {
+	display: grid;
+	grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+	margin-block: 1rem;
+}
+/* Positioned, so layers paint in order even over positioned content (an image). */
+:where(.pb-layer) {
+	position: relative;
+	grid-area: 1 / 1;
+	display: flow-root;
+	min-width: 0;
+	pointer-events: none;
+}
+:where(.pb-layer > *) {
+	pointer-events: auto;
+}
+:where(.pb-layer--v-center) {
+	align-self: center;
+}
+:where(.pb-layer--v-end) {
+	align-self: end;
+}
+:where(.pb-layer--h-start) {
+	justify-self: start;
+}
+:where(.pb-layer--h-center) {
+	justify-self: center;
+}
+:where(.pb-layer--h-end) {
+	justify-self: end;
+}
+:where(.pb-layer > .pb-image:only-child) {
+	margin: 0;
+}

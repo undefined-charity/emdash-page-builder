@@ -24,6 +24,7 @@ import { withNodeViews, previewStore } from "./nodeviews.js";
 import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
 import { claimIfFree, releaseIfActive, setActive, useIsActive } from "./registry.js";
 import { fieldEdits, usePendingFieldEdits } from "./fields.js";
+import { DragDrop, startBlockDrag } from "./drag.js";
 import { selectBlock, type BlockRef } from "./structure.js";
 import { InsertPanel, Toolbar, type SaveState } from "./Toolbar.js";
 
@@ -111,6 +112,7 @@ export function PageEditor(props: PageEditorProps) {
 		immediatelyRender: false,
 		extensions: [
 			...withNodeViews(builderExtensions(config), { config, reusableTitles: props.reusableTitles }),
+			DragDrop,
 			Placeholder.configure({
 				includeChildren: true,
 				showOnlyCurrent: true,
@@ -299,6 +301,15 @@ export function PageEditor(props: PageEditorProps) {
 			dom.removeEventListener("focusin", claim);
 		};
 	}, [editor, props.rootId]);
+
+	// Blocks move with the handle's own drag (drag.ts), never the browser's.
+	React.useEffect(() => {
+		const onDragStart = (e: DragEvent) => {
+			if (e.target instanceof Element && e.target.closest(".pb-handle, :has(> .pb-handle)")) e.preventDefault();
+		};
+		document.addEventListener("dragstart", onDragStart, true);
+		return () => document.removeEventListener("dragstart", onDragStart, true);
+	}, []);
 
 	// A page restored from the back/forward cache is a stale snapshot.
 	React.useEffect(() => {
@@ -613,12 +624,14 @@ export function PageEditor(props: PageEditorProps) {
 					</button>
 					<span
 						className="pb-handle__grip"
-						title="Drag to move · click to select"
-						onClick={() => {
+						title="Drag to move (drop at another block's side to put them side by side) · click to select"
+						onPointerDown={(e) => {
 							const h = hovered.current;
-							if (!h) return;
-							selectBlock(editor, h.pos);
-							setInspectorOpen(true);
+							if (!h || e.button !== 0) return;
+							startBlockDrag(editor, h.pos, e.nativeEvent, () => {
+								selectBlock(editor, h.pos);
+								setInspectorOpen(true);
+							});
 						}}
 					>
 						⠿

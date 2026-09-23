@@ -33,6 +33,8 @@ const LABELS: Record<string, string> = {
 	pbAccordionSummary: "Question title",
 	pbAccordionBody: "Answer",
 	pbSpacer: "Spacer",
+	pbStack: "Layers",
+	pbLayer: "Layer",
 	pbReusable: "Reusable block",
 	pbExternal: "Site block",
 };

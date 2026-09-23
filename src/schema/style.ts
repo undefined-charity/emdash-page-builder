@@ -190,7 +190,7 @@ export function responsiveCss(breakpoint: number): string {
 	const live = ":not(.pb-editor-content *)";
 	const phone = PHONE_RULES.map(([name, css]) => `[data-pb-phone~="${name}"] { ${css} }`).join(" ");
 	return (
-		`@media (max-width: ${bp}px) { .pb-hide-phone${live} { display: none !important; } ${phone} } ` +
+		`@media (max-width: ${bp}px) { .pb-hide-phone${live} { display: none !important; } .pb-stack--phone-flow > .pb-layer { grid-area: auto; } ${phone} } ` +
 		`@media (min-width: ${bp + 0.02}px) { .pb-hide-desktop${live} { display: none !important; } }`
 	);
 }

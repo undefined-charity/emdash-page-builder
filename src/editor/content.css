@@ -9,11 +9,11 @@
 }
 
 /* Structure is visible while editing: faint outlines on containers. */
-.pb-editor-content :is(.pb-section, .pb-columns, .pb-column, .pb-cards, .pb-card, .pb-accordion, .pb-buttons) {
+.pb-editor-content :is(.pb-section, .pb-columns, .pb-column, .pb-cards, .pb-card, .pb-accordion, .pb-buttons, .pb-stack, .pb-layer) {
 	outline: 1px dashed rgb(124 156 255 / 0.25);
 	outline-offset: 2px;
 }
-.pb-editor-content :is(.pb-section, .pb-column, .pb-card):hover {
+.pb-editor-content :is(.pb-section, .pb-column, .pb-card, .pb-layer):hover {
 	outline-color: rgb(124 156 255 / 0.6);
 }
 .pb-editor-content .ProseMirror-selectednode,
@@ -249,4 +249,75 @@ html:not([data-pb-phone-view]) .pb-editor-content .pb-hide-desktop {
 	opacity: 0.4;
 	outline: 1px dashed #ffc857 !important;
 	outline-offset: 2px;
+}
+
+/* Dragging a block (drag.ts): its old place fades, the page parts where it
+   will land, and a picture of it follows the pointer. */
+html.pb-dragging,
+html.pb-dragging * {
+	cursor: grabbing !important;
+	user-select: none !important;
+}
+html.pb-dragging .pb-handle {
+	visibility: hidden;
+}
+.pb-editor-content .pb-drag-source {
+	opacity: 0.25;
+}
+.pb-drop-gap {
+	height: var(--pb-gap, 48px);
+	margin-block: 0.5rem;
+	border: 2px dashed #7c9cff;
+	border-radius: 10px;
+	background: rgb(124 156 255 / 0.1);
+	box-sizing: border-box;
+	animation: pb-gap-open 160ms ease-out;
+}
+@keyframes pb-gap-open {
+	from {
+		height: 0;
+		margin-block: 0;
+		opacity: 0;
+	}
+}
+.pb-editor-content .pb-drop-side--left {
+	box-shadow: -8px 0 0 -2px #7c9cff;
+}
+.pb-editor-content .pb-drop-side--right {
+	box-shadow: 8px 0 0 -2px #7c9cff;
+}
+.pb-drag-ghost {
+	position: fixed;
+	left: 0;
+	top: 0;
+	/* Above the side panel, below the ribbon. */
+	z-index: 2147482950;
+	max-height: 160px;
+	overflow: hidden;
+	pointer-events: none;
+	margin: calc(-1 * var(--pb-grab-y, 0px)) 0 0 calc(-1 * var(--pb-grab-x, 0px));
+	opacity: 0.88;
+	border-radius: 8px;
+	outline: 2px solid #7c9cff;
+	box-shadow: 0 16px 40px rgb(0 0 0 / 0.45);
+	rotate: -1deg;
+	transition: rotate 120ms;
+}
+.pb-drag-ghost > :first-child {
+	margin: 0 !important;
+	float: none !important;
+}
+.pb-drag-ghost[data-side="true"] {
+	rotate: 0deg;
+	outline-style: dashed;
+}
+.pb-drag-ghost__label:not(:empty) {
+	position: absolute;
+	top: 6px;
+	right: 6px;
+	font: 600 11px/1 system-ui, sans-serif;
+	color: #10131f;
+	background: #7c9cff;
+	padding: 4px 8px;
+	border-radius: 999px;
 }

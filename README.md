@@ -12,10 +12,11 @@ Content is stored as ordinary Portable Text in the entry's rich-text field, so t
 - **`/` to insert**, the same list on the ribbon's **+ Insert** and the **+** beside every block:
   - Text: paragraphs, headings, lists, quotes, and the site's own named styles
   - Media: images from the media library or uploaded straight from the computer (dropped or pasted onto the page, too) — inline, centred, full-width, or floated left/right with text wrapping; drag the edges to resize
-  - Layout: sections, 2–4 columns, cards, FAQ/accordions, buttons, dividers, spacers
+  - Layout: sections, 2–4 columns, cards, FAQ/accordions, buttons, dividers, spacers, and layers (blocks on top of each other, such as a headline over a photo)
   - Site blocks: anything the site renders itself — forms, a next-event panel, a ticket widget, a menu — shown as a live preview and configured in the side panel
   - Reusable blocks: save any block as shared; edit it once, it changes everywhere; detach a copy to edit it on one page only
-- **Drag handles** on every block, including blocks inside sections and columns.
+- **Drag handles** on every block, including blocks inside sections and columns. As a block is dragged, the page opens a gap where it will land. Drop it at the left or right edge of another block to put the two side by side in columns. <kbd>Esc</kbd> cancels.
+- **Layers**: each layer is aligned in the block (top, middle or bottom; left, centre, right or full width) and can be brought forward or sent back. Empty parts of a layer let clicks through to the layers behind it. On phones the layers can show one after another instead.
 - **A side panel** with the selected block's settings and a breadcrumb to reach the blocks around it, plus:
   - **Style** — text/background/border colour, background image, padding, rounded corners, width, height, text size, font — per block
   - **Page** — the site's design tokens (colours, fonts, sizes) overridden for this page only
@@ -166,6 +167,7 @@ An external block is any Portable Text type your site renders — the builder ke
 | `pb.columns` | `{ ratio, columns: [{ content: Block[] }] }` |
 | `pb.cards` | `{ cards: [{ content: Block[] }] }` |
 | `pb.accordion` | `{ items: [{ summary, content: Block[], open }] }` |
+| `pb.stack` | `{ phoneFlow?, layers: [{ valign?, halign?, content: Block[] }] }`, back to front |
 | `pb.spacer` | `{ size: "s" \| "m" \| "l" \| "xl" }` |
 | `pb.reusable` | `{ ref }` — an entry in the reusable-blocks collection |
 

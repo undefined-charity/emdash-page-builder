@@ -59,6 +59,8 @@ export const STYLABLE_TYPES = [
 	"pbAccordionItem",
 	"pbButtons",
 	"pbImage",
+	"pbStack",
+	"pbLayer",
 ];
 
 /** Node types that can be hidden on phones or on desktops. */
@@ -355,6 +357,43 @@ const AccordionBody = Node.create({
 	renderHTML: () => ["div", { class: "pb-accordion__body" }, 0],
 });
 
+export const LAYER_V_ALIGN = ["start", "center", "end"] as const;
+export const LAYER_H_ALIGN = ["stretch", "start", "center", "end"] as const;
+
+/**
+ * Layers: blocks placed on top of each other, like a headline over a photo.
+ * Later layers are in front. Each layer is aligned within the stack; on
+ * phones the layers can stack one after another instead (`phoneFlow`).
+ */
+const Stack = Node.create({
+	name: "pbStack",
+	group: "block",
+	content: "pbLayer+",
+	defining: true,
+	isolating: true,
+	draggable: true,
+	addAttributes() {
+		return { phoneFlow: { default: false, ...noDom } };
+	},
+	parseHTML: () => [{ tag: "div.pb-stack" }],
+	renderHTML: ({ node, HTMLAttributes }) => ["div", mergeAttributes(HTMLAttributes, { class: cls("pb-stack", node.attrs.phoneFlow && "pb-stack--phone-flow") }), 0],
+});
+
+const Layer = Node.create({
+	name: "pbLayer",
+	content: "block+",
+	isolating: true,
+	addAttributes() {
+		return { valign: { default: "start", ...noDom }, halign: { default: "stretch", ...noDom } };
+	},
+	parseHTML: () => [{ tag: "div.pb-layer" }],
+	renderHTML: ({ node, HTMLAttributes }) => {
+		const v = LAYER_V_ALIGN.includes(node.attrs.valign) ? node.attrs.valign : "start";
+		const h = LAYER_H_ALIGN.includes(node.attrs.halign) ? node.attrs.halign : "stretch";
+		return ["div", mergeAttributes(HTMLAttributes, { class: cls("pb-layer", `pb-layer--v-${v}`, `pb-layer--h-${h}`) }), 0];
+	},
+});
+
 export const SPACER_SIZES = ["s", "m", "l", "xl"] as const;
 
 const Spacer = Node.create({
@@ -402,7 +441,7 @@ const External = Node.create({
 	renderHTML: ({ node }) => ["div", { "data-pb-external": node.attrs.blockType }],
 });
 
-export const CONTAINER_TYPES = ["pbSection", "pbColumns", "pbCards", "pbAccordion", "pbButtons"] as const;
+export const CONTAINER_TYPES = ["pbSection", "pbColumns", "pbCards", "pbAccordion", "pbButtons", "pbStack"] as const;
 
 /** Everything needed to parse, edit and render a builder document. */
 export function builderExtensions(config: BuilderConfig): Extensions {
@@ -428,6 +467,8 @@ export function builderExtensions(config: BuilderConfig): Extensions {
 		AccordionItem,
 		AccordionSummary,
 		AccordionBody,
+		Stack,
+		Layer,
 		Spacer,
 		Reusable,
 		External,

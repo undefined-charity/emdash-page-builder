@@ -193,6 +193,21 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 				}),
 			});
 			return;
+		case "pbStack":
+			out.push({
+				_type: "pb.stack",
+				_key: newKey(),
+				...(a.phoneFlow ? { phoneFlow: true } : {}),
+				...styleOf(a),
+				layers: (node.content ?? []).map((l) => ({
+					_key: newKey(),
+					...(l.attrs?.valign && l.attrs.valign !== "start" ? { valign: l.attrs.valign } : {}),
+					...(l.attrs?.halign && l.attrs.halign !== "stretch" ? { halign: l.attrs.halign } : {}),
+					...styleOf(l.attrs),
+					content: nested(l.content, config),
+				})),
+			});
+			return;
 		case "pbSpacer":
 			out.push({ _type: "pb.spacer", _key: newKey(), size: a.size ?? "m", ...hideOf(a) });
 			return;

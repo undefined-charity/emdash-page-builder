@@ -58,6 +58,7 @@ export const BUILDER_TYPES = new Set([
 	"pb.columns",
 	"pb.cards",
 	"pb.accordion",
+	"pb.stack",
 	"pb.spacer",
 	"pb.reusable",
 ]);

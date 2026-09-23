@@ -209,3 +209,23 @@ test("the phone view answers width queries and vw lengths for a phone", () => {
 	assert.equal(answerVw("clamp(2.8rem, 6vw, 4.5rem)", 390), "clamp(2.8rem, 23.4px, 4.5rem)");
 	assert.equal(answerVw("calc(100vw - 2rem)", 390), "calc(390px - 2rem)");
 });
+
+test("layers round-trip and render in one grid cell, front layer last", () => {
+	const blocks = [
+		{
+			_type: "pb.stack",
+			_key: "s",
+			phoneFlow: true,
+			pbStyle: { minHeight: "60vh" },
+			layers: [
+				{ _key: "l1", content: [{ _type: "image", _key: "i", asset: { _ref: "m", url: "/x.jpg" }, alt: "", alignment: "wide" }] },
+				{ _key: "l2", valign: "center", halign: "center", pbStyle: { padding: "2rem" }, content: [{ _type: "block", _key: "h", style: "h2", markDefs: [], children: [span("Over")] }] },
+			],
+		},
+	];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(normalize(once), normalize(blocks));
+	const html = renderDocument(blocks, config).parts.join("");
+	assert.match(html, /<div [^>]*class="pb-stack pb-stack--phone-flow"/);
+	assert.match(html, /class="pb-layer pb-layer--v-center pb-layer--h-center"/);
+});

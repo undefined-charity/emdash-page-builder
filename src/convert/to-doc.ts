@@ -224,6 +224,22 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 				})),
 			};
 		}
+		case "pb.stack": {
+			const layers = Array.isArray(b.layers) ? (b.layers as Array<Record<string, unknown>>) : [];
+			return {
+				type: "pbStack",
+				attrs: { phoneFlow: b.phoneFlow === true, ...styleAttr(b) },
+				content: (layers.length ? layers : [{}]).map((l) => ({
+					type: "pbLayer",
+					attrs: {
+						valign: typeof l.valign === "string" ? l.valign : "start",
+						halign: typeof l.halign === "string" ? l.halign : "stretch",
+						...styleAttr(l),
+					},
+					content: nonEmpty(blocksToNodes(arr(l.content), config)),
+				})),
+			};
+		}
 		case "pb.spacer":
 			return { type: "pbSpacer", attrs: { size: typeof b.size === "string" ? b.size : "m", ...hideAttr(b) } };
 		case "pb.reusable":

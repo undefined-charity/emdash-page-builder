@@ -354,6 +354,76 @@ function BlockPanel({ editor, config, block, onPickImage, onSaveReusable, onRefr
 				</Group>
 			)}
 
+			{type === "pbStack" && (
+				<Group title="Layers">
+					<p className="pb-hint">Layers sit on top of each other; later ones are in front. Click a layer to align it or change its order.</p>
+					<ul className="pb-list">
+						{Array.from({ length: node.childCount }, (_, i) => {
+							let at = live.pos + 1;
+							for (let j = 0; j < i; j++) at += node.child(j).nodeSize;
+							const layer = node.child(i);
+							const text = layer.textContent.trim();
+							return (
+								<li key={i}>
+									<button type="button" onClick={() => selectBlock(editor, at)}>
+										<span>
+											Layer {i + 1}
+											{text ? ` — ${text.length > 28 ? `${text.slice(0, 28)}…` : text}` : ""}
+										</span>
+										<span className="pb-tag">{i === 0 ? "back" : i === node.childCount - 1 ? "front" : ""}</span>
+									</button>
+								</li>
+							);
+						})}
+					</ul>
+					<div className="pb-row">
+						<button type="button" onClick={() => appendChild(editor, live, { type: "pbLayer", attrs: { valign: "center", halign: "center" }, content: [{ type: "paragraph", content: [{ type: "text", text: "New layer" }] }] })}>
+							+ Add layer
+						</button>
+						<button type="button" onClick={() => removeLastChild(editor, live, 1)} disabled={node.childCount < 2}>
+							− Remove front layer
+						</button>
+					</div>
+					<Toggle checked={a.phoneFlow === true} onChange={(phoneFlow) => set({ phoneFlow })} label="On phones, show the layers one after another" />
+				</Group>
+			)}
+
+			{type === "pbLayer" && (
+				<Group title="Layer">
+					<Field label="Up and down">
+						<Segmented
+							value={String(a.valign ?? "start")}
+							onChange={(valign) => set({ valign })}
+							options={[
+								{ label: "Top", value: "start" },
+								{ label: "Middle", value: "center" },
+								{ label: "Bottom", value: "end" },
+							]}
+						/>
+					</Field>
+					<Field label="Across">
+						<Segmented
+							value={String(a.halign ?? "stretch")}
+							onChange={(halign) => set({ halign })}
+							options={[
+								{ label: "Full", value: "stretch", title: "The full width" },
+								{ label: "Left", value: "start" },
+								{ label: "Centre", value: "center" },
+								{ label: "Right", value: "end" },
+							]}
+						/>
+					</Field>
+					<div className="pb-row">
+						<button type="button" title="Bring forward (in front of the next layer)" onClick={() => move(editor, live, 1)}>
+							Bring forward
+						</button>
+						<button type="button" title="Send backward (behind the previous layer)" onClick={() => move(editor, live, -1)}>
+							Send backward
+						</button>
+					</div>
+				</Group>
+			)}
+
 			{type === "pbSpacer" && (
 				<Group title="Spacer">
 					<Segmented value={String(a.size ?? "m")} onChange={(size) => set({ size })} options={SPACER_SIZES.map((s) => ({ label: s.toUpperCase(), value: s }))} />
