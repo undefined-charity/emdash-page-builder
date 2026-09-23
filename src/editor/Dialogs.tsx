@@ -1,11 +1,21 @@
 /** Media library picker (with upload), reusable-block picker, and a text prompt. */
 import * as React from "react";
 
-import { listEntries, listImages, uploadImage, type EntrySummary, type MediaItem } from "./api.js";
+import { listEntries, listFolders, listImages, uploadImage, type EntrySummary, type MediaFolder, type MediaItem } from "./api.js";
 import { Field, Modal, TextInput } from "./ui.js";
 
 export function mediaToImageAttrs(item: MediaItem): Record<string, unknown> {
 	return { src: item.url, mediaId: item.id, alt: item.alt, width: item.width, height: item.height };
+}
+
+/** "unfiled" = the main library; "" = everything; otherwise a folder id. Remembered for the session. */
+const FOLDER_KEY = "pb-media-folder";
+function rememberedFolder(): string {
+	try {
+		return sessionStorage.getItem(FOLDER_KEY) ?? "unfiled";
+	} catch {
+		return "unfiled";
+	}
 }
 
 export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => void; onClose: () => void }) {
@@ -15,23 +25,58 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 	const [uploading, setUploading] = React.useState(0);
 	const [error, setError] = React.useState<string | null>(null);
 	const [query, setQuery] = React.useState("");
+	const [search, setSearch] = React.useState("");
+	// null until known; an empty list means folders exist but none were made yet.
+	const [folders, setFolders] = React.useState<MediaFolder[] | null | undefined>(undefined);
+	const [folder, setFolder] = React.useState<string>(rememberedFolder);
 	const fileInput = React.useRef<HTMLInputElement>(null);
 
-	const load = React.useCallback(async (next?: string) => {
-		setLoading(true);
-		try {
-			const page = await listImages(next);
-			setItems((prev) => (next ? [...prev, ...page.items] : page.items));
-			setCursor(page.nextCursor);
-		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
-		} finally {
-			setLoading(false);
-		}
-	}, []);
 	React.useEffect(() => {
+		listFolders().then((list) => {
+			setFolders(list);
+			// Without folder support there is only "everything".
+			if (list === null) setFolder("");
+			else if (folder && folder !== "unfiled" && !list.some((f) => f.id === folder)) setFolder("unfiled");
+		});
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	// Search the whole library on the server, a moment after typing stops.
+	React.useEffect(() => {
+		const t = setTimeout(() => setSearch(query.trim()), 300);
+		return () => clearTimeout(t);
+	}, [query]);
+
+	const scope = search ? undefined : folder || undefined;
+	const load = React.useCallback(
+		async (next?: string) => {
+			setLoading(true);
+			try {
+				const page = await listImages(next, { folderId: scope, search });
+				setItems((prev) => (next ? [...prev, ...page.items] : page.items));
+				setCursor(page.nextCursor);
+			} catch (e) {
+				setError(e instanceof Error ? e.message : String(e));
+			} finally {
+				setLoading(false);
+			}
+		},
+		[scope, search],
+	);
+	React.useEffect(() => {
+		if (folders === undefined) return;
 		void load();
-	}, [load]);
+	}, [load, folders]);
+
+	const chooseFolder = (id: string) => {
+		setFolder(id);
+		setQuery("");
+		try {
+			sessionStorage.setItem(FOLDER_KEY, id);
+		} catch {
+			/* private mode */
+		}
+	};
 
 	const upload = async (files: FileList | File[]) => {
 		const list = [...files].filter((f) => f.type.startsWith("image/"));
@@ -41,7 +86,7 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 		let last: MediaItem | undefined;
 		for (const file of list) {
 			try {
-				last = await uploadImage(file);
+				last = await uploadImage(file, folder || undefined);
 				setItems((prev) => [last!, ...prev]);
 			} catch (e) {
 				setError(`${file.name}: ${e instanceof Error ? e.message : e}`);
@@ -53,7 +98,7 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 		if (list.length === 1 && last) onPick(last);
 	};
 
-	const shown = query ? items.filter((i) => `${i.filename} ${i.alt}`.toLowerCase().includes(query.toLowerCase())) : items;
+	const folderName = folder === "unfiled" ? "the main library" : folders?.find((f) => f.id === folder)?.name ?? "the media library";
 
 	return (
 		<Modal title="Choose an image" onClose={onClose} wide>
@@ -70,20 +115,33 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 						⤒ Upload from this computer
 					</button>
 					<input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
-					<input type="search" placeholder="Search the media library" value={query} onChange={(e) => setQuery(e.target.value)} />
+					{folders && (
+						<select value={folder} onChange={(e) => chooseFolder(e.target.value)} aria-label="Folder" disabled={!!search}>
+							<option value="unfiled">Main library</option>
+							{folders.map((f) => (
+								<option key={f.id} value={f.id}>
+									{f.name}
+								</option>
+							))}
+							<option value="">All media</option>
+						</select>
+					)}
+					<input type="search" placeholder="Search the whole media library" value={query} onChange={(e) => setQuery(e.target.value)} />
 				</div>
-				<p className="pb-hint">Uploads are added to the site's media library. You can also drop image files here.</p>
+				<p className="pb-hint">
+					{search ? `Results for “${search}” from every folder.` : `Uploads go to ${folderName}. You can also drop image files here.`}
+				</p>
 				{uploading > 0 && <p className="pb-hint">Uploading {uploading}…</p>}
 				{error && <p className="pb-error">{error}</p>}
 				<div className="pb-media__grid">
-					{shown.map((item) => (
+					{items.map((item) => (
 						<button key={item.id} type="button" className="pb-media__item" onClick={() => onPick(item)} title={item.filename}>
 							<img src={item.url} alt={item.alt} loading="lazy" />
 						</button>
 					))}
 				</div>
 				{loading && <p className="pb-hint">Loading…</p>}
-				{!loading && shown.length === 0 && <p className="pb-empty">No images yet — upload one.</p>}
+				{!loading && items.length === 0 && <p className="pb-empty">{search ? "Nothing matches that search." : "No images here yet — upload one."}</p>}
 				{cursor && !loading && (
 					<button type="button" onClick={() => load(cursor)}>
 						Load more

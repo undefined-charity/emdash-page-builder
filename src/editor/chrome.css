@@ -498,7 +498,16 @@
 }
 .pb-media__bar {
 	display: flex;
+	flex-wrap: wrap;
 	gap: 8px;
+}
+.pb-media__bar select {
+	flex: 0 1 220px;
+	min-width: 0;
+}
+.pb-media__bar input[type="search"] {
+	flex: 1 1 200px;
+	min-width: 0;
 }
 .pb-media__bar button {
 	flex: none;

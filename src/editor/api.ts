@@ -156,9 +156,34 @@ function toMediaItem(raw: Record<string, unknown>): MediaItem {
 	};
 }
 
-export async function listImages(cursor?: string): Promise<{ items: MediaItem[]; nextCursor?: string }> {
+export interface MediaFolder {
+	id: string;
+	name: string;
+}
+
+/** The media library's folders, or null when this EmDash has none (before 0.39). */
+export async function listFolders(): Promise<MediaFolder[] | null> {
+	try {
+		const data = await request<{ items?: MediaFolder[] }>(`${API}/media/folders`);
+		return (data.items ?? []).slice().sort((a, b) => a.name.localeCompare(b.name));
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Images from the media library, newest first. `folderId`: "unfiled" for the
+ * main library, a folder's id, or omitted for everything. `search` matches
+ * across the whole library on the server.
+ */
+export async function listImages(
+	cursor?: string,
+	options: { folderId?: string; search?: string } = {},
+): Promise<{ items: MediaItem[]; nextCursor?: string }> {
 	const q = new URLSearchParams({ limit: "60", mimeType: "image/" });
 	if (cursor) q.set("cursor", cursor);
+	if (options.folderId) q.set("folderId", options.folderId);
+	if (options.search?.trim()) q.set("q", options.search.trim());
 	const data = await request<{ items?: Array<Record<string, unknown>>; nextCursor?: string }>(`${API}/media?${q}`);
 	return { items: (data.items ?? []).map(toMediaItem), nextCursor: data.nextCursor };
 }
@@ -175,10 +200,12 @@ function imageSize(file: File): Promise<{ width?: number; height?: number }> {
 	});
 }
 
-export async function uploadImage(file: File): Promise<MediaItem> {
+/** Upload into the media library: the main library, or `folderId` when given. */
+export async function uploadImage(file: File, folderId?: string): Promise<MediaItem> {
 	const dims = await imageSize(file);
 	const form = new FormData();
 	form.append("file", file);
+	if (folderId && folderId !== "unfiled") form.append("folderId", folderId);
 	if (dims.width) form.append("width", String(dims.width));
 	if (dims.height) form.append("height", String(dims.height));
 	const data = await request<{ item?: Record<string, unknown> }>(`${API}/media`, { method: "POST", body: form });
