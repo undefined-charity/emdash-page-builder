@@ -55,6 +55,10 @@ export function pageBuilder(options: PageBuilderOptions = {}): PluginDescriptor 
 		options: {},
 		capabilities: [],
 		adminPages: ADMIN_PAGES,
+		// Replaces EmDash's own Portable Text editor on builder fields (set a
+		// field's widget to "page-builder:editor"): that editor doesn't know
+		// builder blocks and would rewrite them if it saved.
+		fieldWidgets: [{ name: "editor", label: "Page builder (edit on the page)", fieldTypes: ["portableText"] }],
 	};
 }
 

@@ -6,13 +6,14 @@
  * theirs can't leak into the page).
  */
 import * as React from "react";
+import { createRoot } from "react-dom/client";
 
 import type { PTBlock } from "../convert/types.js";
 import type { BuilderConfig } from "../schema/config.js";
 import { harvestSlots } from "./api.js";
 import chromeCss from "./chrome.css?inline";
 import "./content.css";
-import { previewStore } from "./nodeviews.js";
+import { previewStore, setEmbedMounter } from "./nodeviews.js";
 import { PageEditor } from "./PageEditor.js";
 
 interface Props {
@@ -27,6 +28,8 @@ interface Props {
 	config: BuilderConfig;
 	reusableTitles: Record<string, string>;
 	region?: string;
+	/** The server-rendered document to take over, when it isn't found by id (embedded editors). */
+	root?: HTMLElement;
 }
 
 /** One shadow root for the whole page, shared by every editable document. */
@@ -65,9 +68,9 @@ export default function EditorIsland(props: Props) {
 	const [ready, setReady] = React.useState(false);
 
 	React.useEffect(() => {
-		const root = document.querySelector<HTMLElement>(`[data-pb-root="${CSS.escape(props.rootId)}"]`);
+		const root = props.root ?? document.querySelector<HTMLElement>(`[data-pb-root="${CSS.escape(props.rootId)}"]`);
 		if (root) {
-			previewStore.set(harvestSlots(document, props.rootId));
+			previewStore.set(harvestSlots(root.parentElement ?? document, props.rootId));
 			// Not `hidden`: the builder's own `display` rule would beat the UA's.
 			root.style.display = "none";
 		}
@@ -75,8 +78,43 @@ export default function EditorIsland(props: Props) {
 		return () => {
 			if (root) root.style.display = "";
 		};
-	}, [props.rootId]);
+	}, [props.rootId, props.root]);
 
 	if (!chrome || !ready) return null;
 	return <PageEditor {...props} chrome={chrome} />;
 }
+
+/**
+ * Mount an embedded document's editor (see PageBuilder's `embedded`) next to
+ * its server-rendered markup, which it takes over. The outer editor's block
+ * view calls this; the returned function unmounts it.
+ */
+setEmbedMounter((doc: HTMLElement) => {
+	let props: Props;
+	try {
+		props = JSON.parse(doc.dataset.pbEmbed ?? "");
+	} catch {
+		return () => undefined;
+	}
+	const host = document.createElement("div");
+	host.className = "pb-embedded-editor";
+	doc.after(host);
+	// Mounted and unmounted outside the outer editor's React render: TipTap
+	// renders node views synchronously, and starting or stopping another root
+	// in the middle of that leaves React without its hook dispatcher.
+	let root: ReturnType<typeof createRoot> | null = null;
+	let cancelled = false;
+	queueMicrotask(() => {
+		if (cancelled) return;
+		root = createRoot(host);
+		root.render(<EditorIsland {...props} root={doc} />);
+	});
+	return () => {
+		cancelled = true;
+		const r = root;
+		setTimeout(() => {
+			r?.unmount();
+			host.remove();
+		}, 0);
+	};
+});

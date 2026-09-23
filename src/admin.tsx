@@ -132,3 +132,41 @@ function PageBuilderAdmin() {
 }
 
 export const pages: PluginAdminExports["pages"] = { "/": PageBuilderAdmin };
+
+// ── Field widget: builder content in the admin's edit form ────────────────────
+
+/**
+ * Stands in for EmDash's Portable Text editor on builder fields. That editor
+ * doesn't know builder blocks: it turns ones without settings into
+ * placeholder text and saves the result. This widget never changes the value;
+ * it says where the content is edited and summarises it.
+ */
+function BuilderField({ value, label }: { value: unknown; label?: string; id?: string }) {
+	const blocks = Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
+	const headings: string[] = [];
+	const walk = (nodes: unknown) => {
+		if (!Array.isArray(nodes)) return;
+		for (const n of nodes as Array<Record<string, unknown>>) {
+			if (n?._type === "block" && /^(h[1-3]|display)$/.test(String(n.style ?? ""))) {
+				const text = ((n.children as Array<{ text?: string }>) ?? []).map((c) => c.text ?? "").join("").trim();
+				if (text) headings.push(text);
+			}
+			walk(n?.content);
+		}
+	};
+	walk(blocks);
+	return (
+		<div style={{ border: "1px solid rgba(127,127,127,0.35)", borderRadius: 8, padding: "12px 14px", lineHeight: 1.5 }}>
+			<div style={{ fontWeight: 600, marginBottom: 4 }}>{label ?? "Content"}</div>
+			<p style={{ margin: "0 0 8px" }}>
+				Built in the page builder. Open it on the site with <strong>Live View</strong>, switch on <strong>Edit</strong> in the toolbar, and edit it
+				there. It isn't edited here, so this form can't change or damage it.
+			</p>
+			<p style={{ margin: 0, opacity: 0.75, fontSize: "0.9em" }}>
+				{blocks.length === 0 ? "Empty so far." : `${blocks.length} top-level block${blocks.length === 1 ? "" : "s"}${headings.length ? ` — ${headings.slice(0, 5).join(" · ")}${headings.length > 5 ? " …" : ""}` : ""}.`}
+			</p>
+		</div>
+	);
+}
+
+export const fields: PluginAdminExports["fields"] = { editor: BuilderField };

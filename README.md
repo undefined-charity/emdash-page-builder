@@ -71,6 +71,24 @@ Visitors get server-rendered HTML with no JavaScript. Signed-in editors (role Ed
 
 `entry.field` defaults to `body`; `entry.themeField` defaults to `theme` (pass `null` for a collection without per-page design). Add `region="Site header"` to render a shared document — a header, a footer — in a layout.
 
+### Editing inside another document
+
+Pass `embedded` when a site block renders a builder document inside another editable document. For example, an event template can show the event's own content. The outer editor then mounts a second editor inside that block, and edits save to the embedded entry.
+
+```astro
+<PageBuilder value={event.data.content} entry={{ collection: "events", id: event.data.id, field: "content", themeField: null }} embedded config={builderConfig} components={builderComponents} />
+```
+
+### Keep EmDash's admin form away from builder fields
+
+EmDash's own Portable Text editor doesn't know builder blocks. If it saves, it rewrites them, and it replaces a block with no settings with placeholder text. Give every builder field the plugin's widget. The field then shows a short note pointing to on-page editing, and the admin form never changes its value.
+
+```sh
+curl -X PUT …/_emdash/api/schema/collections/pages/fields/body -d '{"widget":"page-builder:editor"}'
+```
+
+Blocks the builder saves always carry at least one setting (`pbBlock: true` when they have none), so they survive the admin editor even without the widget.
+
 ## Configure it for your site
 
 Everything site-specific is plain data passed as `config`:

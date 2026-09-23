@@ -140,3 +140,20 @@ test("trailing empty lines are never saved", () => {
 	const blocks = docToPortableText(doc, config);
 	assert.equal(blocks.length, 1);
 });
+
+test("blocks without settings survive EmDash's admin editor, which adds empty ids", () => {
+	const saved = docToPortableText(
+		portableTextToDoc(
+			[
+				{ _type: "site.eventContent", _key: "a" },
+				{ _type: "site.menu", _key: "b", menu: "primary", id: "" },
+			],
+			config,
+		),
+		config,
+	);
+	// A setting-less block gets a marker the admin editor counts as a setting.
+	assert.deepEqual(saved[0], { _type: "site.eventContent", _key: "a", pbBlock: true });
+	// The admin's empty id is dropped; real settings stay.
+	assert.deepEqual(saved[1], { _type: "site.menu", _key: "b", menu: "primary" });
+});

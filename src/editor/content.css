@@ -194,3 +194,10 @@
 .prosemirror-dropcursor-block {
 	background: #7c9cff !important;
 }
+
+/* An editor embedded in a block's preview is live, unlike the rest of it. */
+.pb-ed-atom__preview .pb-embedded-editor {
+	pointer-events: auto;
+	user-select: text;
+	cursor: text;
+}

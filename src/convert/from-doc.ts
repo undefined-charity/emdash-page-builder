@@ -192,9 +192,16 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 		case "pbReusable":
 			out.push({ _type: "pb.reusable", _key: a.key || newKey(), ref: a.ref ?? "", ...(a.title ? { title: a.title } : {}) });
 			return;
-		case "pbExternal":
-			out.push({ ...(a.data ?? {}), _type: a.blockType, _key: a.key || newKey() });
+		case "pbExternal": {
+			// EmDash's admin editor adds an empty `id` to blocks it passes through.
+			const { id, ...data } = (a.data ?? {}) as Record<string, unknown>;
+			if (id !== "" && id !== undefined) data.id = id;
+			// The admin editor keeps a block it doesn't know only if it has a
+			// setting; one without any would be replaced by placeholder text.
+			if (!Object.keys(data).some((k) => !k.startsWith("_"))) data.pbBlock = true;
+			out.push({ ...data, _type: a.blockType, _key: a.key || newKey() });
 			return;
+		}
 		default:
 			// Unknown node from a paste the schema somehow accepted — keep its text.
 			if (node.content) out.push(...nodesToBlocks(node.content, config));

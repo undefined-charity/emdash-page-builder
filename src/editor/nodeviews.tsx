@@ -32,6 +32,25 @@ export const previewStore = {
 	get: () => previews,
 };
 
+/**
+ * Mounts the editor for a document embedded in a block's preview. Registered
+ * by EditorIsland (a direct import would be circular).
+ */
+let mountEmbedded: ((doc: HTMLElement) => () => void) | null = null;
+export function setEmbedMounter(fn: (doc: HTMLElement) => () => void) {
+	mountEmbedded = fn;
+}
+
+/** Give each embedded document in a preview its own editor, for as long as the preview shows. */
+function useEmbeddedEditors(container: React.RefObject<HTMLElement | null>, html: string | undefined) {
+	React.useEffect(() => {
+		const el = container.current;
+		if (!el || !html || !mountEmbedded) return;
+		const unmounts = [...el.querySelectorAll<HTMLElement>("[data-pb-embed]")].map((doc) => mountEmbedded!(doc));
+		return () => unmounts.forEach((u) => u());
+	}, [container, html]);
+}
+
 function usePreview(key: string): string | undefined {
 	return React.useSyncExternalStore(previewStore.subscribe, () => previewStore.get()[key], () => undefined);
 }
@@ -121,13 +140,15 @@ function makeExternalView(ctx: ViewContext) {
 	return function ExternalView({ node, selected }: NodeViewProps) {
 		const def = ctx.config.externalBlocks.find((b) => b.type === node.attrs.blockType);
 		const html = usePreview(node.attrs.key);
+		const preview = React.useRef<HTMLDivElement>(null);
+		useEmbeddedEditors(preview, html);
 		return (
 			<NodeViewWrapper className={cls("pb-ed-atom", selected && "pb-ed-selected")} data-drag-handle>
 				<div className="pb-ed-atom__label" contentEditable={false}>
 					{def?.icon ?? "◆"} {def?.label ?? node.attrs.blockType}
 				</div>
 				{html ? (
-					<div className="pb-ed-atom__preview" contentEditable={false} dangerouslySetInnerHTML={{ __html: html }} />
+					<div ref={preview} className="pb-ed-atom__preview" contentEditable={false} dangerouslySetInnerHTML={{ __html: html }} />
 				) : (
 					<div className="pb-ed-atom__placeholder" contentEditable={false}>
 						{def?.description ?? "Rendered by the site."} The live preview appears after it saves.

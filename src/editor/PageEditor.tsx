@@ -272,8 +272,14 @@ export function PageEditor(props: PageEditorProps) {
 	// focus: focus doesn't fire when the window itself isn't focused.
 	React.useEffect(() => {
 		if (!editor) return;
-		const claim = () => setActive(props.rootId);
 		const dom = editor.view.dom;
+		// Only for events that are this document's own: one inside an editor
+		// embedded in a block belongs to that editor.
+		const claim = (e: Event) => {
+			const owner = e.target instanceof Element ? e.target.closest(".ProseMirror") : null;
+			if (owner && owner !== dom) return;
+			setActive(props.rootId);
+		};
 		dom.addEventListener("pointerdown", claim);
 		dom.addEventListener("focusin", claim);
 		return () => {

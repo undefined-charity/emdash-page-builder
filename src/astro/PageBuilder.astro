@@ -37,10 +37,16 @@ interface Props {
 	 * by every page. Editable in place like the page, and labelled as shared.
 	 */
 	region?: string;
+	/**
+	 * Rendered inside a block of another editable document (e.g. an event's
+	 * content inside the event template). Editable in place too: the outer
+	 * editor mounts this document's editor inside its block.
+	 */
+	embedded?: boolean;
 	class?: string;
 }
 
-const { value, entry, config: partial, components = {}, theme, nested = false, region, class: className } = Astro.props;
+const { value, entry, config: partial, components = {}, theme, nested = false, region, embedded = false, class: className } = Astro.props;
 const config = resolveConfig(partial);
 const { parts, slots } = renderDocument(value, config);
 
@@ -61,13 +67,34 @@ for (const slot of slots) {
 	}
 }
 
-const themeCss = nested || region ? undefined : themeToCss(theme, config.themeTokens);
+const themeCss = nested || region || embedded ? undefined : themeToCss(theme, config.themeTokens);
 const rootId = entry ? `pb-${entry.collection}-${entry.id}-${entry.field ?? "body"}` : undefined;
 const Self = Astro.self;
+const islandProps =
+	editing && entry
+		? {
+				rootId: rootId!,
+				value: Array.isArray(value) ? value : [],
+				collection: entry.collection,
+				entryId: entry.id,
+				field: entry.field ?? "body",
+				themeField: entry.themeField === null ? "" : (entry.themeField ?? "theme"),
+				title: entry.title ?? "",
+				theme: theme ?? null,
+				config,
+				reusableTitles: Object.fromEntries([...reusable].map(([ref, v]) => [ref, v?.title ?? ""])),
+				region,
+			}
+		: null;
 ---
 
 {themeCss && <style set:html={themeCss} data-pb-theme />}
-<div class:list={["pb-doc", className]} data-pb-root={rootId} data-pb-editing={editing ? "" : undefined}>
+<div
+	class:list={["pb-doc", className]}
+	data-pb-root={rootId}
+	data-pb-editing={editing ? "" : undefined}
+	data-pb-embed={embedded && islandProps ? JSON.stringify(islandProps) : undefined}
+>
 	{parts.map((html, i) => {
 		const slot = slots[i];
 		const shared = slot?.kind === "reusable" ? reusable.get(slot.ref) : undefined;
@@ -93,19 +120,4 @@ const Self = Astro.self;
 	})}
 </div>
 
-{editing && entry && (
-	<EditorIsland
-		client:only="react"
-		rootId={rootId!}
-		value={Array.isArray(value) ? value : []}
-		collection={entry.collection}
-		entryId={entry.id}
-		field={entry.field ?? "body"}
-		themeField={entry.themeField === null ? "" : (entry.themeField ?? "theme")}
-		title={entry.title ?? ""}
-		theme={theme ?? null}
-		config={config}
-		reusableTitles={Object.fromEntries([...reusable].map(([ref, v]) => [ref, v?.title ?? ""]))}
-		region={region}
-	/>
-)}
+{islandProps && !embedded && <EditorIsland client:only="react" {...islandProps} />}
