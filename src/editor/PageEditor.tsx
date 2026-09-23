@@ -20,6 +20,7 @@ import { ConflictError, LockedError, createPublishedEntry, fetchSlotPreviews, lo
 import { closedSlash, insertItems, slashExtension, type InsertContext, type InsertItem, type SlashState } from "./commands.js";
 import { MediaDialog, mediaToImageAttrs, PromptDialog, ReusableDialog } from "./Dialogs.js";
 import { Inspector } from "./Inspector.js";
+import { PreviewOverlay } from "./Preview.js";
 import { sitePalette } from "./SitePanel.js";
 import { withNodeViews, previewStore } from "./nodeviews.js";
 import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
@@ -72,6 +73,7 @@ export function PageEditor(props: PageEditorProps) {
 	/** Saved changes that aren't live yet. */
 	const [unpublished, setUnpublished] = React.useState(false);
 	const [publishing, setPublishing] = React.useState(false);
+	const [previewing, setPreviewing] = React.useState(false);
 	const pendingFields = usePendingFieldEdits();
 	const siteThemeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [slash, setSlashState] = React.useState<SlashState>(closedSlash);
@@ -322,6 +324,13 @@ export function PageEditor(props: PageEditorProps) {
 		return () => window.removeEventListener("pageshow", onShow);
 	}, []);
 
+	/** Save what's pending, then show the page as visitors will see it. */
+	const openPreview = async () => {
+		if (timer.current) clearTimeout(timer.current);
+		await flush();
+		setPreviewing(true);
+	};
+
 	const publish = async () => {
 		setPublishing(true);
 		try {
@@ -488,20 +497,28 @@ export function PageEditor(props: PageEditorProps) {
 		const prev = Object.fromEntries(keys.map((k) => [k, body[k]]));
 		const panel = inspectorOpen && !narrow ? 340 : 0;
 		body.transition = "margin-right 160ms ease";
+		let centre: (() => void) | null = null;
 		if (device === "phone") {
-			// A phone-sized page, centred in the space the panel leaves.
+			// A phone-sized page, centred in the space the panel leaves. Worked
+			// out here rather than with calc(100vw…) in the style, which some
+			// browsers left at the 24px minimum.
 			body.boxSizing = "border-box";
 			body.width = `${PHONE_WIDTH}px`;
 			body.marginTop = "76px";
 			body.marginBottom = "40px";
-			body.marginLeft = `max(24px, calc((100vw - ${panel}px - ${PHONE_WIDTH}px) / 2))`;
 			body.marginRight = "0";
+			centre = () => {
+				body.marginLeft = `${Math.max(24, Math.round((document.documentElement.clientWidth - panel - PHONE_WIDTH) / 2))}px`;
+			};
+			centre();
+			window.addEventListener("resize", centre);
 		} else {
 			body.paddingTop = "52px";
 			body.marginRight = `${panel}px`;
 		}
 		body.paddingBottom = inspectorOpen && narrow ? "45vh" : prev.paddingBottom;
 		return () => {
+			if (centre) window.removeEventListener("resize", centre);
 			Object.assign(body, prev);
 		};
 	}, [inspectorOpen, narrow, isActive, device]);
@@ -552,6 +569,7 @@ export function PageEditor(props: PageEditorProps) {
 				insert={{ items, run: (item) => runItem(item) }}
 				inspectorOpen={inspectorOpen}
 				onToggleInspector={() => setInspectorOpen((o) => !o)}
+				onPreview={() => void openPreview()}
 			/>
 			{inspectorOpen && (
 				<Inspector
@@ -576,6 +594,7 @@ export function PageEditor(props: PageEditorProps) {
 					onClose={() => setInspectorOpen(false)}
 				/>
 			)}
+			{previewing && <PreviewOverlay device={device} onClose={() => setPreviewing(false)} />}
 			{slash.open && slash.rect && slash.items.length > 0 && (
 				<div className="pb-floating" style={{ left: slash.rect.left, top: slash.rect.bottom + 6 }}>
 					<InsertPanel items={slash.items} index={slash.index} onPick={(item) => slash.range && runItem(item, slash.range)} />

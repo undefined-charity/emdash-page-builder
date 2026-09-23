@@ -755,3 +755,64 @@
 .pb-chrome .pb-palette-row button {
 	flex: none;
 }
+
+/* Preview (Preview.tsx) */
+.pb-preview {
+	position: fixed;
+	inset: 0;
+	z-index: 2147483300;
+	display: flex;
+	flex-direction: column;
+	background: #111114;
+}
+.pb-preview__bar {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	height: 52px;
+	padding: 0 12px;
+	background: var(--bg);
+	border-bottom: 1px solid var(--line);
+	flex: none;
+}
+.pb-preview__bar .pb-hint {
+	flex: 1;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.pb-preview__open {
+	color: var(--accent);
+	text-decoration: none;
+	white-space: nowrap;
+}
+.pb-preview__stage {
+	position: relative;
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	min-height: 0;
+}
+.pb-preview__stage iframe {
+	width: 100%;
+	height: 100%;
+	border: 0;
+	background: #fff;
+}
+.pb-preview__stage--phone {
+	padding: 24px 0;
+}
+.pb-preview__stage--phone iframe {
+	height: min(100%, 844px);
+	border-radius: 18px;
+	box-shadow:
+		0 0 0 10px #1c1c21,
+		0 0 0 11px var(--line),
+		0 24px 70px rgb(0 0 0 / 0.55);
+}
+.pb-preview__loading {
+	position: absolute;
+	top: 40%;
+	color: var(--muted);
+}

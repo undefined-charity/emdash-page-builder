@@ -53,7 +53,10 @@ const { parts, slots } = renderDocument(value, config);
 
 const EDITOR_ROLE = 30;
 const role = (Astro.locals as { user?: { role?: number } }).user?.role ?? 0;
-const editing = !nested && Boolean(entry) && role >= EDITOR_ROLE && Boolean(getRequestContext()?.editMode);
+// `?pb-preview`: the editor's Preview. Edit mode serves every entry's latest
+// draft; this renders them as a visitor sees them, with no editor.
+const previewing = Astro.url.searchParams.has("pb-preview");
+const editing = !nested && !previewing && Boolean(entry) && role >= EDITOR_ROLE && Boolean(getRequestContext()?.editMode);
 
 // Reusable blocks are entries in their own collection; fetch each once.
 const reusable = new Map<string, { title: string; content: unknown; id: string } | null>();
@@ -132,6 +135,8 @@ const islandProps =
 		);
 	})}
 </div>
+
+{previewing && pageDoc && <style set:html="#emdash-toolbar { display: none !important; }" data-pb-preview />}
 
 {backToTop && (
 	<a href="#" class="pb-back-to-top" aria-label="Back to top" title="Back to top">

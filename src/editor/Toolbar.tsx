@@ -35,6 +35,7 @@ export function Toolbar({
 	insert,
 	inspectorOpen,
 	onToggleInspector,
+	onPreview,
 }: {
 	editor: Editor;
 	config: BuilderConfig;
@@ -48,6 +49,7 @@ export function Toolbar({
 	insert: { items: InsertItem[]; run: (item: InsertItem) => void };
 	inspectorOpen: boolean;
 	onToggleInspector: () => void;
+	onPreview: () => void;
 }) {
 	const s = useEditorState({
 		editor,
@@ -258,6 +260,9 @@ export function Toolbar({
 
 			<div className="pb-toolbar__end">
 				<DeviceSwitch />
+				<button type="button" onClick={onPreview} title="See the page as visitors will, with your unpublished changes and without the editor">
+					👁 Preview
+				</button>
 				<button type="button" className={inspectorOpen ? "on" : ""} onClick={onToggleInspector} title="Show or hide the side panel">
 					⚙ Panel
 				</button>
