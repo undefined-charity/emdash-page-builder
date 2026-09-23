@@ -9,6 +9,7 @@ import { slugify } from "../src/editor/Pages.tsx";
 import { anyThemeToCss, responsiveCss } from "../src/schema/style.ts";
 import { BUILT_IN_PRESETS, presetValues } from "../src/schema/presets.ts";
 import { pageBackgroundCss, pageBackgroundVideo } from "../src/schema/background.ts";
+import { cleanAnimation, pageTransitionCss } from "../src/schema/animation.ts";
 import { answerVw, answerWidth } from "../src/editor/device.ts";
 
 const config = resolveConfig({
@@ -359,4 +360,25 @@ test("maps, embeds, shapes and full-width strips round-trip and render safely", 
 test("an embed address must be https", () => {
 	const html = renderDocument([{ _type: "pb.embed", mode: "url", url: "javascript:alert(1)" }, { _type: "pb.embed", mode: "url", url: "http://x.test" }], config).parts.join("");
 	assert.ok(!html.includes("<iframe"), html);
+});
+
+test("entrance animations round-trip on any block and render as data attributes", () => {
+	const blocks = [
+		{ _type: "block", _key: "a", style: "normal", pbAnim: { effect: "slide-up", duration: 350, delay: 200, repeat: true }, markDefs: [], children: [span("Hi")] },
+		{ _type: "pb.spacer", _key: "s", size: "m", pbAnim: { effect: "fade" } },
+		{ _type: "site.nextEvent", _key: "n", pbAnim: { effect: "zoom" } },
+	];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(normalize(once), normalize(blocks));
+	const { parts, slots } = renderDocument(blocks, config);
+	assert.match(parts[0], /<p data-pb-anim="slide-up" data-pb-anim-repeat="" style="--pb-anim-duration: 350ms; --pb-anim-delay: 200ms">Hi<\/p>/);
+	assert.deepEqual(slots[0].anim, { "data-pb-anim": "zoom" });
+	assert.equal(cleanAnimation({ effect: "explode" }), undefined);
+	assert.deepEqual(cleanAnimation({ effect: "fade", duration: 1e9, delay: -5 }), { effect: "fade", duration: 5000 });
+});
+
+test("page transitions are CSS only, and off for reduced motion", () => {
+	assert.equal(pageTransitionCss("wipe"), undefined);
+	const css = pageTransitionCss("fade")!;
+	assert.match(css, /^@media \(prefers-reduced-motion: no-preference\) \{ @view-transition \{ navigation: auto; \}/);
 });

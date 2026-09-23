@@ -8,6 +8,7 @@
  * renderer.
  */
 import { findTextStyle, headingLevelOf, type BuilderConfig } from "../schema/config.js";
+import { cleanAnimation } from "../schema/animation.js";
 import { cleanGalleryImages } from "../schema/media.js";
 import { cleanBlockStyle, cleanHide, cleanPhoneStyle, safeColor, safeFont, safeLength } from "../schema/style.js";
 import { isTextBlock, newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
@@ -18,10 +19,11 @@ function arr(value: unknown): PTBlock[] {
 	return Array.isArray(value) ? (value.filter((b) => b && typeof b === "object") as PTBlock[]) : [];
 }
 
-/** `{ pbHide }` for a block hidden on phones or desktops, or nothing. */
-function hideAttr(b: Record<string, unknown> | undefined): { pbHide?: string } {
+/** Hiding on a screen and entrance animation, which any block can have; or nothing. */
+function hideAttr(b: Record<string, unknown> | undefined): { pbHide?: string; pbAnim?: object } {
 	const hide = cleanHide(b?.pbHide);
-	return hide ? { pbHide: hide } : {};
+	const anim = cleanAnimation(b?.pbAnim);
+	return { ...(hide ? { pbHide: hide } : {}), ...(anim ? { pbAnim: anim } : {}) };
 }
 
 /** Style, phone style and hiding attrs for a block, or nothing — keeps unstyled documents lean. */
@@ -302,8 +304,8 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 		case "pb.reusable":
 			return { type: "pbReusable", attrs: { ref: b.ref ?? "", title: b.title ?? "", key: b._key ?? newKey(), ...hideAttr(b) } };
 		default: {
-			const { _type, _key, pbHide, ...data } = b;
-			return { type: "pbExternal", attrs: { blockType: _type, key: _key ?? newKey(), data, ...hideAttr({ pbHide }) } };
+			const { _type, _key, pbHide, pbAnim, ...data } = b;
+			return { type: "pbExternal", attrs: { blockType: _type, key: _key ?? newKey(), data, ...hideAttr({ pbHide, pbAnim }) } };
 		}
 	}
 }

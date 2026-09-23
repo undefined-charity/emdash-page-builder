@@ -10,11 +10,12 @@ import { portableTextToDoc } from "../convert/to-doc.js";
 import type { JSONContent, PTBlock } from "../convert/types.js";
 import type { BuilderConfig } from "../schema/config.js";
 import { builderExtensions } from "../schema/extensions.js";
+import { animationAttrs } from "../schema/animation.js";
 import { cleanHide, type HideOn } from "../schema/style.js";
 
 export type Slot =
-	| { kind: "external"; key: string; block: PTBlock; hide?: HideOn }
-	| { kind: "reusable"; key: string; ref: string; title: string; hide?: HideOn };
+	| { kind: "external"; key: string; block: PTBlock; hide?: HideOn; anim?: Record<string, string> }
+	| { kind: "reusable"; key: string; ref: string; title: string; hide?: HideOn; anim?: Record<string, string> };
 
 export interface RenderedDocument {
 	/** HTML fragments; `slots[i]` goes between `parts[i]` and `parts[i + 1]`. */
@@ -44,12 +45,12 @@ export function renderDocument(value: unknown, config: BuilderConfig): RenderedD
 	const walk = (node: JSONContent): JSONContent => {
 		if (node.type === "pbExternal") {
 			const a = node.attrs ?? {};
-			slots.push({ kind: "external", key: a.key, block: { ...(a.data ?? {}), _type: a.blockType, _key: a.key }, hide: cleanHide(a.pbHide) });
+			slots.push({ kind: "external", key: a.key, block: { ...(a.data ?? {}), _type: a.blockType, _key: a.key }, hide: cleanHide(a.pbHide), anim: animationAttrs(a.pbAnim) });
 			return { type: "pbSlotMarker", attrs: { index: slots.length - 1 } };
 		}
 		if (node.type === "pbReusable") {
 			const a = node.attrs ?? {};
-			slots.push({ kind: "reusable", key: a.key, ref: a.ref, title: a.title, hide: cleanHide(a.pbHide) });
+			slots.push({ kind: "reusable", key: a.key, ref: a.ref, title: a.title, hide: cleanHide(a.pbHide), anim: animationAttrs(a.pbAnim) });
 			return { type: "pbSlotMarker", attrs: { index: slots.length - 1 } };
 		}
 		return node.content ? { ...node, content: node.content.map(walk) } : node;

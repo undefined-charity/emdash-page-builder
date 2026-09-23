@@ -12,6 +12,7 @@ import { cleanBlockStyle, cleanHide, cleanPhoneStyle, type BlockStyle, type Page
 import { cleanGalleryImages, videoSource, type GalleryImage } from "../schema/media.js";
 import type { PageBackground } from "../schema/background.js";
 import { BackgroundGroup } from "./BackgroundPanel.js";
+import { ANIM_EFFECTS, ANIM_FROM, cleanAnimation, type AnimEffect, type BlockAnimation } from "../schema/animation.js";
 import { useDevice } from "./device.js";
 import { PaletteGroup, PresetsGroup, TextStylesGroup, type SiteDesignProps } from "./SitePanel.js";
 import { loadOptions } from "./api.js";
@@ -195,6 +196,17 @@ export function Inspector(props: InspectorProps) {
 							label="Back-to-top button"
 						/>
 						<p className="pb-hint">A button in the corner that appears once a visitor scrolls down a long page. Shows after the page reloads.</p>
+						<Field label="Between pages" hint="How one page gives way to the next, in browsers that can (not for anyone who prefers less motion).">
+							<Segmented
+								value={props.siteSettings.transition ?? "none"}
+								onChange={(v) => props.onSiteSettings({ ...props.siteSettings, transition: v === "none" ? undefined : v })}
+								options={[
+									{ label: "Straight", value: "none" },
+									{ label: "Fade", value: "fade" },
+									{ label: "Slide", value: "slide" },
+								]}
+							/>
+						</Field>
 					</Group>
 				</ThemePanel>
 			)}
@@ -624,6 +636,8 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 				</Group>
 			)}
 
+			{HIDEABLE_TYPES.includes(type) && <AnimationSettings editor={editor} block={live} value={cleanAnimation(a.pbAnim)} onChange={(pbAnim) => set({ pbAnim: pbAnim ?? null })} />}
+
 			{HIDEABLE_TYPES.includes(type) && (
 				<Group title="Show on" defaultOpen={Boolean(a.pbHide)}>
 					<Segmented
@@ -857,6 +871,78 @@ const pick = (v: BlockStyle): BlockStyle => Object.fromEntries(STYLE_KEYS.filter
 
 /** How a desktop image position looks on a phone (floats stop wrapping on narrow screens). */
 const PHONE_IMAGE_ALIGN: Record<string, string> = { left: "none", right: "none" };
+
+// ── Entrance animation ────────────────────────────────────────────────────────
+
+function AnimationSettings({ editor, block, value, onChange }: { editor: Editor; block: BlockRef; value: BlockAnimation | undefined; onChange: (v: BlockAnimation | undefined) => void }) {
+	const set = (patch: Partial<BlockAnimation>) => onChange(cleanAnimation({ effect: "fade", ...value, ...patch }));
+	/** Play it on the block in the editor (it never animates by itself there). */
+	const play = (a: BlockAnimation) => {
+		const dom = editor.view.nodeDOM(block.pos);
+		if (!(dom instanceof HTMLElement)) return;
+		const from = ANIM_FROM[a.effect];
+		const to = Object.fromEntries(Object.keys(from).map((k) => [k, k === "clip-path" ? "inset(0 0 0 0)" : k === "opacity" ? "1" : k === "scale" ? "1" : "0 0"]));
+		const camel = (o: Record<string, string>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k === "clip-path" ? "clipPath" : k, v]));
+		dom.animate([camel(from), camel(to)], { duration: a.duration ?? 700, delay: a.delay ?? 0, easing: "cubic-bezier(0.2, 0.7, 0.2, 1)", fill: "backwards" });
+	};
+	return (
+		<Group title={value ? `Animation (${ANIM_LABELS[value.effect]})` : "Animation"} defaultOpen={Boolean(value)}>
+			<Field label="As it scrolls into view">
+				<Select
+					value={value?.effect ?? ""}
+					onChange={(effect) => {
+						const next = effect ? cleanAnimation({ ...value, effect }) : undefined;
+						onChange(next);
+						if (next) play(next);
+					}}
+					options={[{ label: "No animation", value: "" }, ...ANIM_EFFECTS.map((e) => ({ label: ANIM_LABELS[e], value: e }))]}
+				/>
+			</Field>
+			{value && (
+				<>
+					<Field label="Takes">
+						<Segmented
+							value={String(value.duration ?? 700)}
+							onChange={(v) => set({ duration: Number(v) })}
+							options={[
+								{ label: "Quick", value: "350" },
+								{ label: "Normal", value: "700" },
+								{ label: "Slow", value: "1200" },
+							]}
+						/>
+					</Field>
+					<Field label="Starts after">
+						<Segmented
+							value={String(value.delay ?? 0)}
+							onChange={(v) => set({ delay: Number(v) })}
+							options={[
+								{ label: "At once", value: "0" },
+								{ label: "0.2s", value: "200" },
+								{ label: "0.4s", value: "400" },
+								{ label: "0.8s", value: "800" },
+							]}
+						/>
+					</Field>
+					<Toggle checked={value.repeat === true} onChange={(repeat) => set({ repeat })} label="Every time it scrolls into view (not just the first)" />
+					<button type="button" onClick={() => play(value)}>
+						▶ Play
+					</button>
+					<p className="pb-hint">Visitors who ask their device for less motion see it without the animation.</p>
+				</>
+			)}
+		</Group>
+	);
+}
+
+const ANIM_LABELS: Record<AnimEffect, string> = {
+	fade: "Fade in",
+	"slide-up": "Slide up",
+	"slide-down": "Slide down",
+	"slide-left": "Slide in from the right",
+	"slide-right": "Slide in from the left",
+	zoom: "Zoom in",
+	reveal: "Reveal from the top",
+};
 
 // ── Blocks hidden on a screen ─────────────────────────────────────────────────
 

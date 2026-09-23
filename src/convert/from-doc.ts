@@ -3,13 +3,16 @@
  * round-trip (see tests/convert.test.ts).
  */
 import { findTextStyle, type BuilderConfig } from "../schema/config.js";
+import { cleanAnimation } from "../schema/animation.js";
 import { cleanGalleryImages } from "../schema/media.js";
 import { cleanBlockStyle, cleanHide, cleanPhoneStyle } from "../schema/style.js";
 import { newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
-function hideOf(attrs: Record<string, unknown> | undefined): { pbHide?: string } {
+/** Hiding on a screen and entrance animation, which any block can have. */
+function hideOf(attrs: Record<string, unknown> | undefined): { pbHide?: string; pbAnim?: object } {
 	const hide = cleanHide(attrs?.pbHide);
-	return hide ? { pbHide: hide } : {};
+	const anim = cleanAnimation(attrs?.pbAnim);
+	return { ...(hide ? { pbHide: hide } : {}), ...(anim ? { pbAnim: anim } : {}) };
 }
 
 function styleOf(attrs: Record<string, unknown> | undefined): { pbStyle?: object; pbStylePhone?: object; pbHide?: string } {
@@ -281,8 +284,9 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 			if (id !== "" && id !== undefined) data.id = id;
 			// The admin editor keeps a block it doesn't know only if it has a
 			// setting; one without any would be replaced by placeholder text.
-			if (!Object.keys(data).some((k) => !k.startsWith("_"))) data.pbBlock = true;
-			out.push({ ...data, ...hideOf(a), _type: a.blockType, _key: a.key || newKey() });
+			const extras = hideOf(a);
+			if (!Object.keys({ ...data, ...extras }).some((k) => !k.startsWith("_"))) data.pbBlock = true;
+			out.push({ ...data, ...extras, _type: a.blockType, _key: a.key || newKey() });
 			return;
 		}
 		default:
@@ -302,7 +306,7 @@ export function docToPortableText(doc: JSONContent, config: BuilderConfig): PTBl
 	const blocks = nodesToBlocks(doc.content ?? [], config);
 	const isEmpty = (b: PTBlock | undefined) => {
 		const t = b as PTTextBlock | undefined;
-		return t?._type === "block" && t.style === "normal" && !t.listItem && !t.pbStyle && !t.pbStylePhone && !t.pbHide && t.children.every((c) => !c.text);
+		return t?._type === "block" && t.style === "normal" && !t.listItem && !t.pbStyle && !t.pbStylePhone && !t.pbHide && !t.pbAnim && t.children.every((c) => !c.text);
 	};
 	while (blocks.length && isEmpty(blocks[blocks.length - 1])) blocks.pop();
 	return blocks;

@@ -504,3 +504,41 @@ html:has(.pb-back-to-top) {
 :where(.pb-shape--right) {
 	margin-left: auto;
 }
+
+/* Entrance animations (animation.ts). Blocks are hidden only once the
+   page's script has run, never while editing, and not at all for anyone
+   who prefers less motion. */
+@media (prefers-reduced-motion: no-preference) {
+	html.pb-anim-ready [data-pb-anim]:not(.pb-editor-content *) {
+		transition:
+			opacity var(--pb-anim-duration, 700ms) ease var(--pb-anim-delay, 0ms),
+			translate var(--pb-anim-duration, 700ms) cubic-bezier(0.2, 0.7, 0.2, 1) var(--pb-anim-delay, 0ms),
+			scale var(--pb-anim-duration, 700ms) cubic-bezier(0.2, 0.7, 0.2, 1) var(--pb-anim-delay, 0ms),
+			clip-path var(--pb-anim-duration, 700ms) ease var(--pb-anim-delay, 0ms);
+	}
+	html.pb-anim-ready [data-pb-anim]:not(.pb-in, .pb-editor-content *) {
+		opacity: 0;
+	}
+	html.pb-anim-ready [data-pb-anim="slide-up"]:not(.pb-in, .pb-editor-content *) {
+		translate: 0 2.5rem;
+	}
+	html.pb-anim-ready [data-pb-anim="slide-down"]:not(.pb-in, .pb-editor-content *) {
+		translate: 0 -2.5rem;
+	}
+	html.pb-anim-ready [data-pb-anim="slide-left"]:not(.pb-in, .pb-editor-content *) {
+		translate: 3rem 0;
+	}
+	html.pb-anim-ready [data-pb-anim="slide-right"]:not(.pb-in, .pb-editor-content *) {
+		translate: -3rem 0;
+	}
+	html.pb-anim-ready [data-pb-anim="zoom"]:not(.pb-in, .pb-editor-content *) {
+		scale: 0.9;
+	}
+	html.pb-anim-ready [data-pb-anim="reveal"]:not(.pb-in, .pb-editor-content *) {
+		opacity: 1;
+		clip-path: inset(0 0 100% 0);
+	}
+	html.pb-anim-ready [data-pb-anim="reveal"].pb-in:not(.pb-editor-content *) {
+		clip-path: inset(0 0 0 0);
+	}
+}

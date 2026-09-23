@@ -16,6 +16,7 @@ import { PortableText } from "emdash/ui";
 
 import { renderDocument } from "../render/html.js";
 import { resolveConfig, type BuilderConfig } from "../schema/config.js";
+import { ANIMATION_SCRIPT } from "../schema/animation.js";
 import { BACKGROUND_KEY, cleanPageBackground, pageBackgroundCss, pageBackgroundVideo } from "../schema/background.js";
 import { responsiveCss, themeToCss } from "../schema/style.js";
 import EditorIsland from "../editor/EditorIsland.tsx";
@@ -71,7 +72,12 @@ if (revisionId && entry && !nested && role >= EDITOR_ROLE) {
 	}
 }
 const { parts, slots } = renderDocument(value, config);
+/** A site block hidden on a screen or animated gets a wrapper to carry that. */
+const wrapped = (slot: (typeof slots)[number]) => Boolean(slot.hide || Object.keys(slot.anim ?? {}).length);
 const editing = !nested && !previewing && Boolean(entry) && role >= EDITOR_ROLE && Boolean(getRequestContext()?.editMode);
+// The entrance-animation script, only on pages that have animated blocks
+// (never while editing: blocks don't animate in the editor).
+const animated = !editing && JSON.stringify(value ?? null).includes('"pbAnim"');
 
 // Reusable blocks are entries in their own collection; fetch each once.
 const reusable = new Map<string, { title: string; content: unknown; id: string } | null>();
@@ -139,8 +145,8 @@ const islandProps =
 					<div class="pb-slot" data-pb-slot={slot.key}>
 						<PortableText value={[slot.block]} components={{ type: components }} />
 					</div>
-				) : slot.hide ? (
-					<div class={`pb-hide-${slot.hide}`}>
+				) : wrapped(slot) ? (
+					<div class={slot.hide ? `pb-hide-${slot.hide}` : undefined} {...slot.anim}>
 						<PortableText value={[slot.block]} components={{ type: components }} />
 					</div>
 				) : (
@@ -150,8 +156,8 @@ const islandProps =
 					<div class="pb-slot" data-pb-slot={slot.key}>
 						{shared && <Self value={shared.content} config={partial} components={components} nested />}
 					</div>
-				) : slot.hide ? (
-					<div class={`pb-hide-${slot.hide}`}>
+				) : wrapped(slot) ? (
+					<div class={slot.hide ? `pb-hide-${slot.hide}` : undefined} {...slot.anim}>
 						{shared && <Self value={shared.content} config={partial} components={components} nested />}
 					</div>
 				) : (
@@ -163,6 +169,8 @@ const islandProps =
 </div>
 
 {previewing && pageDoc && <style set:html="#emdash-toolbar { display: none !important; }" data-pb-preview />}
+
+{animated && <script is:inline set:html={ANIMATION_SCRIPT} />}
 
 {backToTop && (
 	<a href="#" class="pb-back-to-top" aria-label="Back to top" title="Back to top">

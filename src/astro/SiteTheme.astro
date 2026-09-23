@@ -4,10 +4,14 @@
  * Put it in the <head> of every layout, after the site's stylesheet, so the
  * overrides apply to every page — builder pages or not.
  */
+import { pageTransitionCss } from "../schema/animation.js";
 import { anyThemeToCss } from "../schema/style.js";
 import { loadSite } from "./site.js";
 
-const css = anyThemeToCss((await loadSite(Astro)).theme);
+const site = await loadSite(Astro);
+const css = anyThemeToCss(site.theme);
+const transition = pageTransitionCss(site.settings.transition);
 ---
 
 <style set:html={css ?? ""} data-pb-site-theme></style>
+{transition && <style set:html={transition} data-pb-transition></style>}

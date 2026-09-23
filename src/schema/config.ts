@@ -159,6 +159,8 @@ export interface SiteSettings {
 	palette?: Array<{ slug: string; label: string }>;
 	/** The page background of every page that doesn't set its own. */
 	background?: PageBackground;
+	/** How one page gives way to the next. */
+	transition?: "fade" | "slide";
 }
 
 export function cleanSiteSettings(value: unknown): SiteSettings {
@@ -169,7 +171,12 @@ export function cleanSiteSettings(value: unknown): SiteSettings {
 				.map((c) => ({ slug: c.slug, label: c.label.slice(0, 60) }))
 		: [];
 	const background = cleanPageBackground(v.background);
-	return { ...(v.backToTop === true ? { backToTop: true } : {}), ...(palette.length ? { palette } : {}), ...(background ? { background } : {}) };
+	return {
+		...(v.backToTop === true ? { backToTop: true } : {}),
+		...(palette.length ? { palette } : {}),
+		...(background ? { background } : {}),
+		...(v.transition === "fade" || v.transition === "slide" ? { transition: v.transition } : {}),
+	};
 }
 
 /** A site colour's token. */

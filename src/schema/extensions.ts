@@ -14,6 +14,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 
 import { defaultSectionStyle, findTextStyle, type BuilderConfig } from "./config.js";
+import { animationAttrs } from "./animation.js";
 import { GALLERY_LAYOUTS, embedDom, galleryDom, mapDom, mapLink, videoDom, videoSource } from "./media.js";
 import { blockStyleToCss, cleanBlockStyle, cleanHide, phoneStyleAttrs, safeColor, safeLength, safeUrl } from "./style.js";
 
@@ -103,6 +104,11 @@ const BlockStyles = Extension.create({
 							const hide = cleanHide(attrs.pbHide);
 							return hide ? { class: `pb-hide-${hide}` } : {};
 						},
+					},
+					pbAnim: {
+						default: null,
+						parseHTML: () => null,
+						renderHTML: (attrs) => animationAttrs(attrs.pbAnim),
 					},
 				},
 			},
