@@ -79,6 +79,10 @@ Pass `embedded` when a site block renders a builder document inside another edit
 <PageBuilder value={event.data.content} entry={{ collection: "events", id: event.data.id, field: "content", themeField: null }} embedded config={builderConfig} components={builderComponents} />
 ```
 
+### Other entries' fields inside a block
+
+A site block that shows another entry's fields, such as an event's name, date and venue, can make them editable in the builder. Mark each element with EmDash's standard edit annotation (`{...entry.edit.venue}`, or `createEditable()` for collection reads). In the editor, those plain-text fields become editable inside the block's preview. They save to their own entry as a draft, and the ribbon's **Publish** button publishes those entries along with the page, naming them in its tooltip. Rich-text fields are skipped here. Use `embedded` for those.
+
 ### Keep EmDash's admin form away from builder fields
 
 EmDash's own Portable Text editor doesn't know builder blocks. If it saves, it rewrites them, and it replaces a block with no settings with placeholder text. Give every builder field the plugin's widget. The field then shows a short note pointing to on-page editing, and the admin form never changes its value.

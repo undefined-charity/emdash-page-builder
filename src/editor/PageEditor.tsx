@@ -22,6 +22,7 @@ import { MediaDialog, mediaToImageAttrs, PromptDialog, ReusableDialog } from "./
 import { Inspector } from "./Inspector.js";
 import { withNodeViews, previewStore } from "./nodeviews.js";
 import { claimIfFree, releaseIfActive, setActive, useIsActive } from "./registry.js";
+import { fieldEdits, usePendingFieldEdits } from "./fields.js";
 import { selectBlock, type BlockRef } from "./structure.js";
 import { InsertPanel, Toolbar, type SaveState } from "./Toolbar.js";
 
@@ -65,6 +66,7 @@ export function PageEditor(props: PageEditorProps) {
 	/** Saved changes that aren't live yet. */
 	const [unpublished, setUnpublished] = React.useState(false);
 	const [publishing, setPublishing] = React.useState(false);
+	const pendingFields = usePendingFieldEdits();
 	const siteThemeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [slash, setSlashState] = React.useState<SlashState>(closedSlash);
 	const [plus, setPlus] = React.useState<{ x: number; y: number } | null>(null);
@@ -302,6 +304,13 @@ export function PageEditor(props: PageEditorProps) {
 			await flush();
 			if (hold.current) return;
 			await publishEntry(props.collection, props.entryId);
+			fieldEdits.published(props.collection, props.entryId);
+			// Fields of other entries edited on this page go live with it.
+			for (const other of fieldEdits.list()) {
+				await publishEntry(other.collection, other.id);
+				fieldEdits.published(other.collection, other.id);
+				document.dispatchEvent(new CustomEvent("emdash:content-changed", { detail: { collection: other.collection, id: other.id } }));
+			}
 			// Publishing changes the entry's revision; pick up the new token.
 			rev.current = (await loadLatest(props.collection, props.entryId)).rev;
 			setUnpublished(false);
@@ -450,7 +459,7 @@ export function PageEditor(props: PageEditorProps) {
 				save={save}
 				onSaveNow={() => void flush()}
 				onResolveConflict={(keep) => void resolveConflict(keep)}
-				publish={{ unpublished, busy: publishing, run: () => void publish() }}
+				publish={{ unpublished: unpublished || pendingFields.length > 0, also: pendingFields.map((p) => p.label), busy: publishing, run: () => void publish() }}
 				insert={{ items, run: (item) => runItem(item) }}
 				inspectorOpen={inspectorOpen}
 				onToggleInspector={() => setInspectorOpen((o) => !o)}

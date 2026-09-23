@@ -12,6 +12,7 @@ import { portableTextToDoc } from "../convert/to-doc.js";
 import type { BuilderConfig } from "../schema/config.js";
 import { blockStyleToCss } from "../schema/style.js";
 import { getEntryField } from "./api.js";
+import { attachFieldEditing } from "./fields.js";
 import { reactStyle } from "./ui.js";
 
 // ── Preview store: server-rendered markup for external/reusable blocks ────────
@@ -41,13 +42,20 @@ export function setEmbedMounter(fn: (doc: HTMLElement) => () => void) {
 	mountEmbedded = fn;
 }
 
-/** Give each embedded document in a preview its own editor, for as long as the preview shows. */
-function useEmbeddedEditors(container: React.RefObject<HTMLElement | null>, html: string | undefined) {
+/** The live parts of a preview: embedded documents get their own editor, and other entries' fields are editable. */
+function useLivePreviewParts(container: React.RefObject<HTMLElement | null>, html: string | undefined) {
 	React.useEffect(() => {
 		const el = container.current;
 		if (!el || !html || !mountEmbedded) return;
 		const unmounts = [...el.querySelectorAll<HTMLElement>("[data-pb-embed]")].map((doc) => mountEmbedded!(doc));
 		return () => unmounts.forEach((u) => u());
+	}, [container, html]);
+	// Another entry's plain-text fields shown in the preview (an event's name,
+	// date…) are edited right there, saving to that entry.
+	React.useEffect(() => {
+		const el = container.current;
+		if (!el || !html) return;
+		return attachFieldEditing(el);
 	}, [container, html]);
 }
 
@@ -141,7 +149,7 @@ function makeExternalView(ctx: ViewContext) {
 		const def = ctx.config.externalBlocks.find((b) => b.type === node.attrs.blockType);
 		const html = usePreview(node.attrs.key);
 		const preview = React.useRef<HTMLDivElement>(null);
-		useEmbeddedEditors(preview, html);
+		useLivePreviewParts(preview, html);
 		return (
 			<NodeViewWrapper className={cls("pb-ed-atom", selected && "pb-ed-selected")} data-drag-handle>
 				<div className="pb-ed-atom__label" contentEditable={false}>

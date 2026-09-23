@@ -201,3 +201,28 @@
 	user-select: text;
 	cursor: text;
 }
+
+/* Another entry's field shown in a preview, edited in place (fields.ts). */
+.pb-ed-atom__preview .pb-ed-field {
+	pointer-events: auto;
+	cursor: text;
+	outline: 1px dashed transparent;
+	outline-offset: 3px;
+	border-radius: 2px;
+	transition: outline-color 0.15s;
+}
+.pb-ed-atom__preview .pb-ed-field:hover {
+	outline-color: #7c9cff;
+}
+.pb-ed-atom__preview .pb-ed-field:focus {
+	outline: 2px solid #7c9cff;
+}
+.pb-ed-atom__preview .pb-ed-field--saving {
+	opacity: 0.6;
+}
+.pb-ed-atom__preview .pb-ed-field--saved {
+	outline: 2px solid #3ecf8e;
+}
+.pb-ed-atom__preview .pb-ed-field--error {
+	outline: 2px solid #ff5d5d;
+}

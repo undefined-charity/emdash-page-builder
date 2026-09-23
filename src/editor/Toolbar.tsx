@@ -39,7 +39,7 @@ export function Toolbar({
 	save: { state: SaveState; error?: string };
 	onSaveNow: () => void;
 	onResolveConflict: (keep: "mine" | "theirs") => void;
-	publish: { unpublished: boolean; busy: boolean; run: () => void };
+	publish: { unpublished: boolean; also?: string[]; busy: boolean; run: () => void };
 	insert: { items: InsertItem[]; run: (item: InsertItem) => void };
 	inspectorOpen: boolean;
 	onToggleInspector: () => void;
@@ -248,7 +248,7 @@ export function Toolbar({
 					className="primary pb-publish"
 					disabled={!publish.unpublished || publish.busy || save.state === "conflict"}
 					onClick={publish.run}
-					title={publish.unpublished ? "Make your saved changes live" : "Everything here is live"}
+					title={publish.unpublished ? `Make your saved changes live${publish.also?.length ? `, including ${publish.also.join(", ")}` : ""}` : "Everything here is live"}
 				>
 					{publish.busy ? "Publishing…" : publish.unpublished ? "Publish" : "Published ✓"}
 				</button>
