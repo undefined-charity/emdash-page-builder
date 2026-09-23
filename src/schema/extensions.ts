@@ -16,7 +16,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { defaultSectionStyle, findTextStyle, type BuilderConfig } from "./config.js";
 import { animationAttrs } from "./animation.js";
 import { GALLERY_LAYOUTS, embedDom, galleryDom, mapDom, mapLink, videoDom, videoSource } from "./media.js";
-import { blockStyleToCss, cleanBlockStyle, cleanHide, phoneStyleAttrs, safeColor, safeLength, safeUrl } from "./style.js";
+import { blockStyleToCss, cleanBlockStyle, cleanFit, cleanHide, phoneStyleAttrs, safeColor, safeLength, safeUrl } from "./style.js";
 
 const noDom = { rendered: false } as const;
 const cls = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
@@ -109,6 +109,20 @@ const BlockStyles = Extension.create({
 						default: null,
 						parseHTML: () => null,
 						renderHTML: (attrs) => animationAttrs(attrs.pbAnim),
+					},
+				},
+			},
+			{
+				// Last, so its font size wins over the block style's.
+				types: ["paragraph", "heading"],
+				attributes: {
+					pbFit: {
+						default: null,
+						parseHTML: () => null,
+						renderHTML: (attrs) => {
+							const fit = cleanFit(attrs.pbFit);
+							return fit ? { style: `font-size: ${fit}cqi; white-space: nowrap`, "data-pb-fit": "" } : {};
+						},
 					},
 				},
 			},

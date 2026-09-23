@@ -10,7 +10,7 @@
 import { findTextStyle, headingLevelOf, type BuilderConfig } from "../schema/config.js";
 import { cleanAnimation } from "../schema/animation.js";
 import { cleanGalleryImages } from "../schema/media.js";
-import { cleanBlockStyle, cleanHide, cleanPhoneStyle, safeColor, safeFont, safeLength } from "../schema/style.js";
+import { cleanBlockStyle, cleanFit, cleanHide, cleanPhoneStyle, safeColor, safeFont, safeLength } from "../schema/style.js";
 import { isTextBlock, newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
 const EMPTY_PARAGRAPH: JSONContent = { type: "paragraph" };
@@ -102,9 +102,11 @@ function plainText(text: unknown): JSONContent[] {
 
 function textBlock(block: PTTextBlock, config: BuilderConfig): JSONContent {
 	const content = spansToInline(block.children, block.markDefs);
+	const fit = cleanFit((block as unknown as Record<string, unknown>).pbFit);
 	const align = {
 		...(block.textAlign && block.textAlign !== "left" ? { textAlign: block.textAlign } : {}),
 		...styleAttr(block as unknown as Record<string, unknown>),
+		...(fit ? { pbFit: fit } : {}),
 	};
 	const style = block.style ?? "normal";
 	const named = findTextStyle(config, style);

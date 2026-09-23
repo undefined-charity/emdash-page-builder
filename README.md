@@ -9,6 +9,7 @@ Content is stored as ordinary Portable Text in the entry's rich-text field, so t
 ## What editors get
 
 - **A ribbon** (Word's Home tab): undo/redo, paragraph styles, font, size, bold/italic/underline/strike, text colour, highlight, alignment, lists, quotes, links, insert.
+- **Text size by steps**: A− / A+ in the ribbon (<kbd>⌘⇧,</kbd> / <kbd>⌘⇧.</kbd>) make the selection, or with nothing selected the whole block, a size smaller or bigger (in the phone view, on phones only). **↔ Fit** sizes a line of text to exactly fill its box, on every screen, and keeps it fitted as you edit.
 - **`/` to insert**, the same list on the ribbon's **+ Insert** and the **+** beside every block:
   - Text: paragraphs, headings, lists, quotes, and the site's own named styles
   - Media: images from the media library or uploaded straight from the computer (dropped or pasted onto the page, too) — inline, centred, full-width, or floated left/right with text wrapping; drag the edges to resize

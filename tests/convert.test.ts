@@ -382,3 +382,14 @@ test("page transitions are CSS only, and off for reduced motion", () => {
 	const css = pageTransitionCss("fade")!;
 	assert.match(css, /^@media \(prefers-reduced-motion: no-preference\) \{ @view-transition \{ navigation: auto; \}/);
 });
+
+test("fit-to-width text round-trips and renders in container units, after its own size", () => {
+	const blocks = [{ _type: "block", _key: "h", style: "h1", pbStyle: { fontSize: "3rem" }, pbFit: 4.763, markDefs: [], children: [span("BAD DOG")] }];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(normalize(once), normalize(blocks));
+	const html = renderDocument(blocks, config).parts.join("");
+	// The fitted size replaces the block's own.
+	assert.match(html, /style="font-size: 4\.763cqi; white-space: nowrap"/);
+	assert.match(html, /data-pb-fit=""/);
+	assert.equal(renderDocument([{ ...blocks[0], pbFit: "9cqi; color: red" }], config).parts.join("").includes("cqi"), false);
+});

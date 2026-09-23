@@ -31,6 +31,7 @@ import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
 import { claimIfFree, releaseIfActive, setActive, useIsActive } from "./registry.js";
 import { fieldEdits, usePendingFieldEdits } from "./fields.js";
 import { DragDrop, startBlockDrag } from "./drag.js";
+import { FitText, stepTextSize } from "./textsize.js";
 import { selectBlock, type BlockRef } from "./structure.js";
 import { InsertPanel, Toolbar, type SaveState } from "./Toolbar.js";
 
@@ -137,6 +138,7 @@ export function PageEditor(props: PageEditorProps) {
 		extensions: [
 			...withNodeViews(builderExtensions(config), { config, reusableTitles: props.reusableTitles }),
 			DragDrop,
+			FitText,
 			Placeholder.configure({
 				includeChildren: true,
 				showOnlyCurrent: true,
@@ -155,6 +157,8 @@ export function PageEditor(props: PageEditorProps) {
 						void flush();
 						return true;
 					},
+					"Mod-Shift-.": () => (editorRef.current ? stepTextSize(editorRef.current, 1) : false),
+					"Mod-Shift-,": () => (editorRef.current ? stepTextSize(editorRef.current, -1) : false),
 				}),
 			}),
 		],

@@ -5,7 +5,7 @@
 import { findTextStyle, type BuilderConfig } from "../schema/config.js";
 import { cleanAnimation } from "../schema/animation.js";
 import { cleanGalleryImages } from "../schema/media.js";
-import { cleanBlockStyle, cleanHide, cleanPhoneStyle } from "../schema/style.js";
+import { cleanBlockStyle, cleanFit, cleanHide, cleanPhoneStyle } from "../schema/style.js";
 import { newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
 /** Hiding on a screen and entrance animation, which any block can have. */
@@ -85,6 +85,7 @@ function textBlock(node: JSONContent, config: BuilderConfig, extra: Partial<PTTe
 		style,
 		...(attrs.textAlign && attrs.textAlign !== "left" ? { textAlign: attrs.textAlign as string } : {}),
 		...styleOf(attrs),
+		...(cleanFit(attrs.pbFit) ? { pbFit: cleanFit(attrs.pbFit) } : {}),
 		markDefs,
 		children,
 		...extra,

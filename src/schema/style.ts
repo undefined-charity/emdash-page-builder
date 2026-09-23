@@ -100,6 +100,14 @@ export function blockStyleToCss(value: unknown): string | undefined {
 	return rules.join("; ");
 }
 
+/**
+ * "Fit to width": the font size, in `cqi` of the block's container, at which
+ * its line exactly fills the container (worked out by the editor).
+ */
+export function cleanFit(v: unknown): number | undefined {
+	return typeof v === "number" && Number.isFinite(v) && v >= 0.5 && v <= 300 ? +v.toFixed(3) : undefined;
+}
+
 // ── Phones ────────────────────────────────────────────────────────────────────
 
 /** Hide a block on one kind of screen. */

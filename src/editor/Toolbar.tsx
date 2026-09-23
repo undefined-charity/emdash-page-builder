@@ -12,6 +12,7 @@ import { pageUrl } from "../schema/config.js";
 import { getCollectionInfo, listEntries } from "./api.js";
 import { setDevice, useDevice } from "./device.js";
 import { applyTextStyle } from "./Inspector.js";
+import { stepTextSize, toggleFit } from "./textsize.js";
 
 export type SaveState = "loading" | "saved" | "dirty" | "saving" | "error" | "conflict" | "locked";
 
@@ -80,6 +81,7 @@ export function Toolbar({
 				canUndo: e.can().undo(),
 				canRedo: e.can().redo(),
 				textblock: para.isTextblock,
+				fit: Boolean(para.attrs.pbFit),
 			};
 		},
 	});
@@ -169,6 +171,15 @@ export function Toolbar({
 						</option>
 					))}
 				</select>
+				<button type="button" title="Smaller text (⌘⇧,). With nothing selected, the whole block (on phones only, in the phone view)." disabled={!s.textblock} onClick={() => stepTextSize(editor, -1)}>
+					A−
+				</button>
+				<button type="button" title="Bigger text (⌘⇧.). With nothing selected, the whole block (on phones only, in the phone view)." disabled={!s.textblock} onClick={() => stepTextSize(editor, 1)}>
+					A+
+				</button>
+				<button type="button" title="Fit to width: the line exactly fills its box, on every screen" className={s.fit ? "on" : ""} disabled={!s.textblock} onClick={() => toggleFit(editor)}>
+					↔
+				</button>
 			</div>
 
 			<div className="pb-toolbar__group">

@@ -542,3 +542,8 @@ html:has(.pb-back-to-top) {
 		clip-path: inset(0 0 0 0);
 	}
 }
+
+/* "Fit to width" text sizes itself in units of its container (cqi). */
+:where(:has(> [data-pb-fit])) {
+	container-type: inline-size;
+}
