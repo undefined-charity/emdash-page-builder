@@ -127,3 +127,16 @@ test("external and reusable blocks become slots in document order", () => {
 	assert.match(parts[0], /^<header [^>]*class="pb-section hero"/);
 	assert.match(parts[0], /^<header [^>]*style="background-color: #111111; padding: 2rem 1rem"/);
 });
+
+test("trailing empty lines are never saved", () => {
+	const doc = {
+		type: "doc",
+		content: [
+			{ type: "paragraph", content: [{ type: "text", text: "Hi" }] },
+			{ type: "paragraph" },
+			{ type: "paragraph" },
+		],
+	};
+	const blocks = docToPortableText(doc, config);
+	assert.equal(blocks.length, 1);
+});

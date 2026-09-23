@@ -109,6 +109,7 @@ export function PageEditor(props: PageEditorProps) {
 			...withNodeViews(builderExtensions(config), { config, reusableTitles: props.reusableTitles }),
 			Placeholder.configure({
 				includeChildren: true,
+				showOnlyCurrent: true,
 				placeholder: ({ node }) => (node.type.name === "paragraph" ? "Type, or press / to add a block…" : node.type.name === "heading" ? "Heading" : ""),
 			}),
 			slashExtension({
@@ -460,6 +461,7 @@ export function PageEditor(props: PageEditorProps) {
 					siteTheme={siteTheme}
 					onSiteTheme={changeSiteTheme}
 					pageTab={!props.region && Boolean(props.themeField)}
+					onRefreshPreviews={() => void fetchSlotPreviews(props.rootId).then(previewStore.set).catch(() => undefined)}
 					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}
 					onSaveReusable={(block) => setDialog({ kind: "saveReusable", block })}
 					onClose={() => setInspectorOpen(false)}

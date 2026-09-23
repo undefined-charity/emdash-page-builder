@@ -39,7 +39,11 @@ export interface ButtonStyle {
 export interface ExternalField {
 	name: string;
 	label: string;
-	type: "text" | "textarea" | "url" | "number" | "toggle" | "select";
+	/**
+	 * `menu`: the value is an EmDash menu name, and the side panel edits that
+	 * menu's links in place (rename, re-link, add, remove, reorder).
+	 */
+	type: "text" | "textarea" | "url" | "number" | "toggle" | "select" | "menu";
 	options?: Array<{ label: string; value: string }>;
 	/** GET endpoint returning `{ data: { options: [{label, value}] } }` or `{ options }`. */
 	optionsUrl?: string;

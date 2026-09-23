@@ -210,7 +210,10 @@ export function nodesToBlocks(nodes: JSONContent[], config: BuilderConfig): PTBl
 /** Drop a trailing empty paragraph, which the editor always keeps for typing into. */
 export function docToPortableText(doc: JSONContent, config: BuilderConfig): PTBlock[] {
 	const blocks = nodesToBlocks(doc.content ?? [], config);
-	const last = blocks[blocks.length - 1] as PTTextBlock | undefined;
-	if (last?._type === "block" && last.style === "normal" && !last.listItem && last.children.every((c) => !c.text)) blocks.pop();
+	const isEmpty = (b: PTBlock | undefined) => {
+		const t = b as PTTextBlock | undefined;
+		return t?._type === "block" && t.style === "normal" && !t.listItem && !t.pbStyle && t.children.every((c) => !c.text);
+	};
+	while (blocks.length && isEmpty(blocks[blocks.length - 1])) blocks.pop();
 	return blocks;
 }

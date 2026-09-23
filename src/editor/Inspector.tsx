@@ -9,6 +9,7 @@ import type { BuilderConfig, ExternalBlock, ExternalField } from "../schema/conf
 import { SPACER_SIZES, STYLABLE_TYPES } from "../schema/extensions.js";
 import { cleanBlockStyle, type BlockStyle, type PageTheme } from "../schema/style.js";
 import { loadOptions } from "./api.js";
+import { MenuEditor } from "./MenuEditor.js";
 import {
 	ancestry,
 	appendChild,
@@ -37,6 +38,8 @@ export interface InspectorProps {
 	onClose: () => void;
 	/** False for site regions, which have no page of their own to design. */
 	pageTab?: boolean;
+	/** Re-render server-rendered blocks' previews (after a menu edit, say). */
+	onRefreshPreviews: () => void;
 }
 
 export function Inspector(props: InspectorProps) {
@@ -128,7 +131,7 @@ export function Inspector(props: InspectorProps) {
 
 // ── Block settings ────────────────────────────────────────────────────────────
 
-function BlockPanel({ editor, config, block, onPickImage, onSaveReusable }: InspectorProps & { block: BlockRef }) {
+function BlockPanel({ editor, config, block, onPickImage, onSaveReusable, onRefreshPreviews }: InspectorProps & { block: BlockRef }) {
 	const live = refresh(editor, block) ?? block;
 	const node = live.node;
 	const a = node.attrs as Record<string, unknown>;
@@ -318,7 +321,7 @@ function BlockPanel({ editor, config, block, onPickImage, onSaveReusable }: Insp
 				</Group>
 			)}
 
-			{type === "pbExternal" && <ExternalSettings config={config} block={live} set={set} />}
+			{type === "pbExternal" && <ExternalSettings config={config} block={live} set={set} onRefreshPreviews={onRefreshPreviews} />}
 
 			{type === "pbReusable" && (
 				<Group title="Reusable block">
@@ -380,16 +383,30 @@ export function applyTextStyle(editor: Editor, config: BuilderConfig, value: str
 	}
 }
 
-function ExternalSettings({ config, block, set }: { config: BuilderConfig; block: BlockRef; set: (p: Record<string, unknown>) => void }) {
+function ExternalSettings({
+	config,
+	block,
+	set,
+	onRefreshPreviews,
+}: {
+	config: BuilderConfig;
+	block: BlockRef;
+	set: (p: Record<string, unknown>) => void;
+	onRefreshPreviews: () => void;
+}) {
 	const def: ExternalBlock | undefined = config.externalBlocks.find((b) => b.type === block.node.attrs.blockType);
 	const data = (block.node.attrs.data ?? {}) as Record<string, unknown>;
 	const update = (name: string, value: unknown) => set({ data: { ...data, [name]: value } });
 	return (
 		<Group title={def?.label ?? "Site block"}>
 			{def?.description && <p className="pb-hint">{def.description}</p>}
-			{(def?.fields ?? []).map((f) => (
-				<ExternalFieldInput key={f.name} field={f} value={data[f.name]} onChange={(v) => update(f.name, v)} />
-			))}
+			{(def?.fields ?? []).map((f) =>
+				f.type === "menu" ? (
+					<MenuEditor key={f.name} menu={String(data[f.name] ?? "primary")} onMenu={(name) => update(f.name, name)} onChanged={onRefreshPreviews} />
+				) : (
+					<ExternalFieldInput key={f.name} field={f} value={data[f.name]} onChange={(v) => update(f.name, v)} />
+				),
+			)}
 			{!def?.fields?.length && <p className="pb-hint">No settings — its content comes from elsewhere on the site.</p>}
 			<p className="pb-hint">The preview refreshes after each save.</p>
 		</Group>

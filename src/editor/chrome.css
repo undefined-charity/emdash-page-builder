@@ -559,3 +559,51 @@
 	background: var(--accent);
 	color: #10131f;
 }
+
+/* Menu editor */
+.pb-menu {
+	display: grid;
+	gap: 8px;
+}
+.pb-menu__items {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 4px;
+}
+.pb-menu__items li {
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--bg);
+}
+.pb-menu__row {
+	display: flex;
+	gap: 3px;
+	align-items: center;
+	padding: 3px;
+}
+.pb-chrome .pb-menu__row button {
+	min-height: 26px;
+	padding: 2px 7px;
+}
+.pb-chrome .pb-menu__label {
+	flex: 1;
+	text-align: left;
+	background: none;
+	border-color: transparent;
+	display: grid;
+	min-width: 0;
+}
+.pb-menu__label small {
+	color: var(--muted);
+	font-size: 11px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.pb-menu__edit {
+	display: grid;
+	gap: 8px;
+	padding: 4px 8px 10px;
+}

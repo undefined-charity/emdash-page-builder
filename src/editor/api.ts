@@ -211,3 +211,74 @@ export async function loadSiteTheme(): Promise<Record<string, string>> {
 export async function saveSiteTheme(theme: Record<string, string>): Promise<void> {
 	await request(`${PLUGIN}/site-theme-save`, { method: "POST", body: JSON.stringify({ theme }) });
 }
+
+// ── Menus ─────────────────────────────────────────────────────────────────────
+//
+// EmDash menus have no drafts: every change here is live immediately.
+
+export interface MenuItem {
+	id: string;
+	label: string;
+	url: string;
+	/** Items linking to an entry (not a typed URL) keep their link. */
+	linked: boolean;
+	newTab: boolean;
+	parentId: string | null;
+	sortOrder: number;
+}
+
+export async function listMenus(): Promise<Array<{ name: string; label: string }>> {
+	const data = await request<Array<{ name: string; label: string }> | { items?: Array<{ name: string; label: string }> }>(`${API}/menus`);
+	const items = Array.isArray(data) ? data : (data.items ?? []);
+	return items.map((m) => ({ name: m.name, label: m.label }));
+}
+
+export async function getMenu(name: string): Promise<{ label: string; items: MenuItem[] } | null> {
+	try {
+		const data = await request<{ label: string; items: Array<Record<string, unknown>> }>(`${API}/menus/${encodeURIComponent(name)}`);
+		const items = (data.items ?? [])
+			.map((it) => ({
+				id: String(it.id),
+				label: String(it.label ?? ""),
+				url: String(it.customUrl ?? ""),
+				linked: it.type !== "custom",
+				newTab: it.target === "_blank",
+				parentId: (it.parentId as string | null) ?? null,
+				sortOrder: Number(it.sortOrder ?? 0),
+			}))
+			.sort((a, b) => a.sortOrder - b.sortOrder);
+		return { label: data.label, items };
+	} catch {
+		return null;
+	}
+}
+
+export async function createMenu(name: string, label: string): Promise<void> {
+	await request(`${API}/menus`, { method: "POST", body: JSON.stringify({ name, label }) });
+}
+
+export async function addMenuItem(menu: string, item: { label: string; url: string; newTab?: boolean; sortOrder: number }): Promise<void> {
+	await request(`${API}/menus/${encodeURIComponent(menu)}/items`, {
+		method: "POST",
+		body: JSON.stringify({ type: "custom", label: item.label, customUrl: item.url, sortOrder: item.sortOrder, ...(item.newTab ? { target: "_blank" } : {}) }),
+	});
+}
+
+export async function updateMenuItem(menu: string, id: string, patch: { label?: string; url?: string; newTab?: boolean }): Promise<void> {
+	await request(`${API}/menus/${encodeURIComponent(menu)}/items/${encodeURIComponent(id)}`, {
+		method: "PUT",
+		body: JSON.stringify({
+			...(patch.label !== undefined ? { label: patch.label } : {}),
+			...(patch.url !== undefined ? { customUrl: patch.url } : {}),
+			...(patch.newTab !== undefined ? { target: patch.newTab ? "_blank" : "" } : {}),
+		}),
+	});
+}
+
+export async function deleteMenuItem(menu: string, id: string): Promise<void> {
+	await request(`${API}/menus/${encodeURIComponent(menu)}/items/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function reorderMenu(menu: string, items: Array<{ id: string; parentId: string | null; sortOrder: number }>): Promise<void> {
+	await request(`${API}/menus/${encodeURIComponent(menu)}/reorder`, { method: "POST", body: JSON.stringify({ items }) });
+}
