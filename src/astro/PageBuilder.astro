@@ -1,0 +1,111 @@
+---
+/**
+ * Render a builder document — and, for a signed-in editor in edit mode, make
+ * it editable in place.
+ *
+ * Visitors get plain server-rendered HTML (no JavaScript). Editors get the same
+ * HTML plus the editor island, which takes over that markup: blocks the site
+ * renders itself (forms, next-event panels…) are wrapped so the editor can lift
+ * their live preview out of the page.
+ *
+ *   <PageBuilder value={entry.data.body} entry={{ collection: 'pages', id: entry.data.id }}
+ *     config={builderConfig} components={{ 'site.nextEvent': NextEvent }} theme={entry.data.theme} />
+ */
+import { getEmDashEntry, getRequestContext } from "emdash";
+import { PortableText } from "emdash/ui";
+
+import { renderDocument } from "../render/html.js";
+import { resolveConfig, type BuilderConfig } from "../schema/config.js";
+import { themeToCss } from "../schema/style.js";
+import EditorIsland from "../editor/EditorIsland.tsx";
+import "../styles/page-builder.css";
+
+interface Props {
+	value: unknown;
+	/** The entry holding `value`. Omit to render read-only. */
+	/** `themeField: null` for a collection without per-page design. */
+	entry?: { collection: string; id: string; field?: string; themeField?: string | null; title?: string };
+	config?: Partial<BuilderConfig>;
+	/** Astro components for external block types, keyed by Portable Text `_type`. */
+	components?: Record<string, unknown>;
+	/** Per-page theme overrides (CSS custom properties). */
+	theme?: unknown;
+	/** Set when rendering inside another builder document (reusable blocks). */
+	nested?: boolean;
+	/**
+	 * Name of a site region (e.g. "Site header") when this document is shared
+	 * by every page. Editable in place like the page, and labelled as shared.
+	 */
+	region?: string;
+	class?: string;
+}
+
+const { value, entry, config: partial, components = {}, theme, nested = false, region, class: className } = Astro.props;
+const config = resolveConfig(partial);
+const { parts, slots } = renderDocument(value, config);
+
+const EDITOR_ROLE = 30;
+const role = (Astro.locals as { user?: { role?: number } }).user?.role ?? 0;
+const editing = !nested && Boolean(entry) && role >= EDITOR_ROLE && Boolean(getRequestContext()?.editMode);
+
+// Reusable blocks are entries in their own collection; fetch each once.
+const reusable = new Map<string, { title: string; content: unknown; id: string } | null>();
+for (const slot of slots) {
+	if (slot.kind !== "reusable" || !slot.ref || reusable.has(slot.ref)) continue;
+	try {
+		const { entry: shared } = await getEmDashEntry(config.reusableCollection, slot.ref);
+		const data = shared?.data as { id?: string; title?: string; content?: unknown } | undefined;
+		reusable.set(slot.ref, data ? { title: data.title ?? slot.title, content: data.content, id: data.id ?? slot.ref } : null);
+	} catch {
+		reusable.set(slot.ref, null);
+	}
+}
+
+const themeCss = nested || region ? undefined : themeToCss(theme, config.themeTokens);
+const rootId = entry ? `pb-${entry.collection}-${entry.id}-${entry.field ?? "body"}` : undefined;
+const Self = Astro.self;
+---
+
+{themeCss && <style set:html={themeCss} data-pb-theme />}
+<div class:list={["pb-doc", className]} data-pb-root={rootId} data-pb-editing={editing ? "" : undefined}>
+	{parts.map((html, i) => {
+		const slot = slots[i];
+		const shared = slot?.kind === "reusable" ? reusable.get(slot.ref) : undefined;
+		return (
+			<>
+				<Fragment set:html={html} />
+				{slot?.kind === "external" && (editing ? (
+					<div class="pb-slot" data-pb-slot={slot.key}>
+						<PortableText value={[slot.block]} components={{ type: components }} />
+					</div>
+				) : (
+					<PortableText value={[slot.block]} components={{ type: components }} />
+				))}
+				{slot?.kind === "reusable" && (editing ? (
+					<div class="pb-slot" data-pb-slot={slot.key}>
+						{shared && <Self value={shared.content} config={partial} components={components} nested />}
+					</div>
+				) : (
+					shared && <Self value={shared.content} config={partial} components={components} nested />
+				))}
+			</>
+		);
+	})}
+</div>
+
+{editing && entry && (
+	<EditorIsland
+		client:only="react"
+		rootId={rootId!}
+		value={Array.isArray(value) ? value : []}
+		collection={entry.collection}
+		entryId={entry.id}
+		field={entry.field ?? "body"}
+		themeField={entry.themeField === null ? "" : (entry.themeField ?? "theme")}
+		title={entry.title ?? ""}
+		theme={theme ?? null}
+		config={config}
+		reusableTitles={Object.fromEntries([...reusable].map(([ref, v]) => [ref, v?.title ?? ""]))}
+		region={region}
+	/>
+)}

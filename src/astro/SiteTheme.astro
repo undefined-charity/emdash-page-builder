@@ -1,0 +1,19 @@
+---
+/**
+ * The site-wide design defaults set in the page editor's "Site design" panel.
+ * Put it in the <head> of every layout, after the site's stylesheet, so the
+ * overrides apply to every page — builder pages or not.
+ */
+import { anyThemeToCss } from "../schema/style.js";
+
+const emdash = (Astro.locals as { emdash?: { handlePublicPluginApiRoute?: (id: string, method: string, path: string, req: Request) => Promise<{ success: boolean; data?: unknown }> } }).emdash;
+let css: string | undefined;
+try {
+	const result = await emdash?.handlePublicPluginApiRoute?.("page-builder", "GET", "/site-theme", new Request(new URL("/", Astro.url)));
+	css = result?.success ? anyThemeToCss((result.data as { theme?: unknown })?.theme) : undefined;
+} catch {
+	css = undefined;
+}
+---
+
+<style set:html={css ?? ""} data-pb-site-theme></style>

@@ -1,0 +1,196 @@
+/*
+ * Editing affordances drawn on the page itself — only loaded in edit mode, and
+ * scoped under .pb-editor-content so the published page never sees them.
+ */
+
+.pb-editor-content {
+	outline: none;
+	min-height: 40vh;
+}
+
+/* Structure is visible while editing: faint outlines on containers. */
+.pb-editor-content :is(.pb-section, .pb-columns, .pb-column, .pb-cards, .pb-card, .pb-accordion, .pb-buttons) {
+	outline: 1px dashed rgb(124 156 255 / 0.25);
+	outline-offset: 2px;
+}
+.pb-editor-content :is(.pb-section, .pb-column, .pb-card):hover {
+	outline-color: rgb(124 156 255 / 0.6);
+}
+.pb-editor-content .ProseMirror-selectednode,
+.pb-editor-content .pb-ed-selected {
+	outline: 2px solid #7c9cff !important;
+	outline-offset: 3px;
+}
+
+/* Empty-line placeholder */
+.pb-editor-content :is(p, h1, h2, h3, h4, div).is-empty::before {
+	content: attr(data-placeholder);
+	float: left;
+	height: 0;
+	pointer-events: none;
+	opacity: 0.4;
+}
+
+/* Buttons are editable text, not links, while editing. */
+.pb-editor-content .pb-button {
+	cursor: text;
+	min-width: 3ch;
+}
+
+/* Images. The node view's wrapper must not be a box, or a floated image
+   floats inside it and the text after it can't wrap around. */
+.pb-editor-content .react-renderer.node-pbImage {
+	display: contents;
+}
+.pb-ed-image {
+	position: relative;
+	cursor: pointer;
+}
+.pb-ed-image img {
+	pointer-events: none;
+	user-select: none;
+}
+.pb-ed-resize {
+	position: absolute;
+	top: 50%;
+	width: 10px;
+	height: 44px;
+	margin-top: -22px;
+	border-radius: 5px;
+	background: #7c9cff;
+	border: 2px solid #fff;
+	cursor: ew-resize;
+	opacity: 0;
+	transition: opacity 120ms;
+	z-index: 2;
+}
+.pb-ed-resize--l {
+	left: -5px;
+}
+.pb-ed-resize--r {
+	right: -5px;
+}
+.pb-ed-image:hover .pb-ed-resize,
+.pb-ed-selected .pb-ed-resize {
+	opacity: 1;
+}
+.pb-ed-caption:empty::before {
+	content: attr(data-placeholder);
+	opacity: 0.5;
+}
+.pb-ed-caption {
+	outline: none;
+	cursor: text;
+}
+.pb-ed-empty {
+	padding: 2rem;
+	border: 1px dashed currentColor;
+	text-align: center;
+	opacity: 0.6;
+}
+
+/* Server-rendered and reusable blocks: a live preview with a label. */
+.pb-ed-atom {
+	position: relative;
+	margin-block: 0.75rem;
+	outline: 1px dashed rgb(124 156 255 / 0.5);
+	outline-offset: 4px;
+	border-radius: 4px;
+}
+.pb-ed-atom--reusable {
+	outline-color: rgb(95 208 138 / 0.7);
+}
+.pb-ed-atom__label {
+	position: absolute;
+	top: -12px;
+	left: 8px;
+	z-index: 3;
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	font: 600 11px/1 system-ui, sans-serif;
+	letter-spacing: 0.02em;
+	color: #10131f;
+	background: #7c9cff;
+	padding: 4px 8px;
+	border-radius: 999px;
+	pointer-events: auto;
+}
+.pb-ed-atom--reusable .pb-ed-atom__label {
+	background: #5fd08a;
+}
+.pb-ed-atom__actions {
+	display: flex;
+	gap: 6px;
+}
+.pb-ed-atom__actions :is(a, button) {
+	all: unset;
+	cursor: pointer;
+	text-decoration: underline;
+	font: inherit;
+	color: inherit;
+}
+.pb-ed-atom__preview {
+	pointer-events: none;
+}
+.pb-ed-atom__placeholder {
+	padding: 1.5rem;
+	font: 13px/1.4 system-ui, sans-serif;
+	opacity: 0.75;
+	border: 1px dashed currentColor;
+	border-radius: 8px;
+}
+
+.pb-ed-spacer {
+	position: relative;
+	background: repeating-linear-gradient(45deg, transparent 0 6px, rgb(124 156 255 / 0.12) 6px 12px);
+}
+.pb-ed-spacer span {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	place-items: center;
+	font: 11px system-ui, sans-serif;
+	opacity: 0.5;
+}
+
+/* Accordion items stay open while editing. */
+.pb-ed-accordion-item > summary {
+	cursor: text;
+}
+
+/* Drag handle */
+.pb-handle {
+	display: flex;
+	gap: 2px;
+	align-items: center;
+	padding-right: 6px;
+}
+.pb-handle__add,
+.pb-handle__grip {
+	all: unset;
+	display: grid;
+	place-items: center;
+	width: 22px;
+	height: 24px;
+	border-radius: 5px;
+	font: 16px/1 system-ui, sans-serif;
+	color: #a2a2b0;
+	background: #1c1c21;
+	border: 1px solid #3b3b46;
+	cursor: pointer;
+}
+.pb-handle__grip {
+	cursor: grab;
+}
+.pb-handle__add:hover,
+.pb-handle__grip:hover {
+	color: #fff;
+	background: #31313a;
+}
+
+/* Drop cursor */
+.ProseMirror .ProseMirror-dropcursor,
+.prosemirror-dropcursor-block {
+	background: #7c9cff !important;
+}

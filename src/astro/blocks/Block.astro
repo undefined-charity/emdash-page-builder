@@ -1,0 +1,13 @@
+---
+/**
+ * Renders one builder block inside EmDash's stock <PortableText>, so builder
+ * content still displays wherever a site renders the field the ordinary way.
+ * Uses the default configuration — named styles and section looks from a
+ * site's PageBuilder config aren't known here.
+ */
+import PageBuilder from "../PageBuilder.astro";
+
+const { node } = Astro.props as { node: unknown };
+---
+
+<PageBuilder value={[node]} nested />

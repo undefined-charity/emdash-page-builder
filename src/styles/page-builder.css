@@ -1,0 +1,117 @@
+/*
+ * Public styles for builder blocks. Deliberately minimal and low-specificity
+ * (:where) so a site's own stylesheet always wins; the site supplies the look,
+ * this only supplies the layout the blocks need to work.
+ */
+
+:where(.pb-doc) {
+	display: flow-root;
+}
+
+:where(.pb-section) {
+	display: flow-root;
+}
+
+/* Columns */
+:where(.pb-columns) {
+	display: grid;
+	gap: var(--pb-gap, 1.5rem);
+	grid-template-columns: repeat(var(--pb-cols, 2), minmax(0, 1fr));
+	margin-block: 1rem;
+}
+:where(.pb-columns--3) {
+	--pb-cols: 3;
+}
+:where(.pb-columns--4) {
+	--pb-cols: 4;
+}
+:where(.pb-columns--wide-left) {
+	grid-template-columns: 2fr 1fr;
+}
+:where(.pb-columns--wide-right) {
+	grid-template-columns: 1fr 2fr;
+}
+:where(.pb-column) {
+	min-width: 0;
+	display: flow-root;
+}
+@media (max-width: 720px) {
+	:where(.pb-columns) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* Images — floats let the following text wrap around them. */
+:where(.pb-image) {
+	margin: 1rem 0;
+	max-width: 100%;
+}
+:where(.pb-image img) {
+	display: block;
+	max-width: 100%;
+	height: auto;
+	border-radius: inherit;
+}
+:where(.pb-image figcaption) {
+	font-size: 0.875em;
+	opacity: 0.8;
+	margin-top: 0.4rem;
+}
+:where(.pb-image--left) {
+	float: left;
+	margin: 0.25rem 1.5rem 1rem 0;
+	max-width: 50%;
+}
+:where(.pb-image--right) {
+	float: right;
+	margin: 0.25rem 0 1rem 1.5rem;
+	max-width: 50%;
+}
+:where(.pb-image--center) {
+	margin-inline: auto;
+}
+:where(.pb-image--wide) {
+	width: 100% !important;
+}
+:where(.pb-image--wide img) {
+	width: 100%;
+}
+@media (max-width: 640px) {
+	:where(.pb-image--left, .pb-image--right) {
+		float: none;
+		max-width: 100%;
+		margin-inline: 0;
+	}
+}
+
+/* Buttons */
+:where(.pb-buttons--center) {
+	justify-content: center;
+}
+:where(.pb-buttons--right) {
+	justify-content: flex-end;
+}
+
+/* Accordion */
+:where(.pb-accordion__body) {
+	display: flow-root;
+}
+
+/* Spacer */
+:where(.pb-spacer--s) {
+	height: 0.75rem;
+}
+:where(.pb-spacer--m) {
+	height: 1.75rem;
+}
+:where(.pb-spacer--l) {
+	height: 3.5rem;
+}
+:where(.pb-spacer--xl) {
+	height: 6rem;
+}
+
+/* Text alignment written by the editor */
+:where(.pb-doc) [style*="text-align: center"] {
+	text-align: center;
+}
