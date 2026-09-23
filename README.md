@@ -28,6 +28,8 @@ Content is stored as ordinary Portable Text in the entry's rich-text field, so t
     - **Default page background**: the same, for every page that doesn't set its own
     - **Site colours**: named colours offered first in every colour picker. Anything using one changes when it does.
 - **Phones**: the ribbon's 🖥 / 📱 switch (<kbd>⌥⌘P</kbd> / <kbd>Ctrl+Alt+P</kbd>) shows the page at phone width, laid out as a phone lays it out, and it stays editable. In the phone view the **Style** group, text alignment and image size and position are saved for phones only; the desktop look is untouched. **Show on** hides any block on phones or on desktops; hidden blocks stay visible but dimmed while editing, and **Hidden blocks** in the side panel lists them.
+- **Pages** (📄 in the ribbon): the site's pages. Open one to edit it, add one (blank, or a copy of another) and it opens ready to edit, change a page's title, address and search and sharing description (and share image, where the collection has EmDash's SEO settings), tick the menus it appears in, unpublish it, or move it to the trash. Another page's changes are published along with the page being edited; an address change takes effect when the page is published. Pages the site routes itself (home, 404…) can't be renamed or removed here.
+- **Links to pages**: typing in the ribbon's link box suggests the site's pages.
 - **Preview**: the ribbon's 👁 Preview shows the page as visitors will see it once published, with every unpublished change (the page's, the header's and footer's, embedded entries') and none of the editor, on a desktop or a phone. Links followed in it stay previews; it can also open in a new tab (`?pb-preview`).
 - **Back-to-top button**: a Site tab option that adds a button to every page once a visitor scrolls down (no JavaScript).
 - **Site regions**: the header and footer are builder documents too, edited in place from any page; the ribbon says when you're editing something shared.
@@ -141,6 +143,15 @@ export const builderConfig: Partial<BuilderConfig> = {
     { name: "--font-body", label: "Body font", type: "font", group: "Text" },
     { name: "--font-size-base", label: "Body text size", type: "length", default: "1rem", presets: ["1rem", "1.125rem"] },
   ],
+  // The pages collection, and pages the site routes itself (they can't be
+  // renamed or removed from the editor). A text field named meta_description,
+  // description or excerpt is used as the search description on collections
+  // without EmDash's SEO settings; or name it with descriptionField.
+  pages: {
+    collection: "pages",
+    protectedSlugs: ["home", "not-found"],
+    urls: { home: "/", "not-found": "/404" },
+  },
   // Blocks your site renders on the server
   externalBlocks: [
     {

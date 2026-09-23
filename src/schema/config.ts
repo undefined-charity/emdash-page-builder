@@ -82,6 +82,8 @@ export interface BuilderConfig {
 	sectionStyles: SectionStyle[];
 	buttonStyles: ButtonStyle[];
 	externalBlocks: ExternalBlock[];
+	/** The site's pages, managed from the editor's Pages panel. */
+	pages: PagesConfig;
 	/** Ready-made looks offered on the Site tab, before the built-in ones. */
 	themePresets: ThemePreset[];
 	/** Collection holding reusable blocks (fields: title, content). */
@@ -106,6 +108,7 @@ export const DEFAULT_CONFIG: BuilderConfig = {
 	],
 	externalBlocks: [],
 	themePresets: [],
+	pages: { collection: "pages", protectedSlugs: ["home"], urls: { home: "/" } },
 	reusableCollection: "reusable_blocks",
 	phoneBreakpoint: 640,
 };
@@ -120,9 +123,28 @@ export function resolveConfig(partial?: Partial<BuilderConfig>): BuilderConfig {
 		buttonStyles: partial?.buttonStyles?.length ? partial.buttonStyles : DEFAULT_CONFIG.buttonStyles,
 		externalBlocks: partial?.externalBlocks ?? [],
 		themePresets: partial?.themePresets ?? [],
+		pages: { ...DEFAULT_CONFIG.pages, ...partial?.pages, urls: { ...DEFAULT_CONFIG.pages.urls, ...partial?.pages?.urls } },
 		reusableCollection: partial?.reusableCollection ?? DEFAULT_CONFIG.reusableCollection,
 		phoneBreakpoint: partial?.phoneBreakpoint && partial.phoneBreakpoint > 0 ? partial.phoneBreakpoint : DEFAULT_CONFIG.phoneBreakpoint,
 	};
+}
+
+export interface PagesConfig {
+	/** The collection holding the site's pages. */
+	collection: string;
+	/** Pages the site routes specially (home, 404…): they can't be renamed, unpublished or trashed from the editor. */
+	protectedSlugs: string[];
+	/** Addresses of pages that aren't at the collection's URL pattern, by slug (`home` → `/`). */
+	urls: Record<string, string>;
+	/** A text field holding the page's search description, for a collection without EmDash's SEO settings (default: found by name). */
+	descriptionField?: string;
+}
+
+/** A page's address. */
+export function pageUrl(pages: PagesConfig, slug: string | null, urlPattern: string | null): string | null {
+	if (!slug) return null;
+	if (pages.urls[slug]) return pages.urls[slug];
+	return urlPattern ? urlPattern.replace("{slug}", slug) : `/${slug}`;
 }
 
 /** Site-wide page options, set on the Site tab. */

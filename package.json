@@ -1,6 +1,6 @@
 {
   "name": "emdash-page-builder",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Word-processor-style, on-page editing for EmDash CMS: edit pages in place in the live site's own styles, insert blocks with /, drag to reorder, wrap text around images, build layouts from sections, columns, cards and FAQs, reuse blocks, and override any colour, font or size per block, per page or site-wide",
   "type": "module",
   "exports": {

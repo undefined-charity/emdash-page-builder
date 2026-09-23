@@ -8,6 +8,8 @@ import * as React from "react";
 
 import type { BuilderConfig } from "../schema/config.js";
 import type { InsertItem } from "./commands.js";
+import { pageUrl } from "../schema/config.js";
+import { getCollectionInfo, listEntries } from "./api.js";
 import { setDevice, useDevice } from "./device.js";
 import { applyTextStyle } from "./Inspector.js";
 
@@ -36,6 +38,7 @@ export function Toolbar({
 	inspectorOpen,
 	onToggleInspector,
 	onPreview,
+	onPages,
 }: {
 	editor: Editor;
 	config: BuilderConfig;
@@ -50,6 +53,7 @@ export function Toolbar({
 	inspectorOpen: boolean;
 	onToggleInspector: () => void;
 	onPreview: () => void;
+	onPages: () => void;
 }) {
 	const s = useEditorState({
 		editor,
@@ -236,7 +240,7 @@ export function Toolbar({
 					<button type="button" title="Link (⌘K)" className={s.link ? "on" : ""} onClick={() => setMenu(menu === "link" ? null : "link")}>
 						🔗
 					</button>
-					{menu === "link" && <LinkPopover editor={editor} onClose={() => setMenu(null)} />}
+					{menu === "link" && <LinkPopover editor={editor} config={config} onClose={() => setMenu(null)} />}
 				</div>
 			</div>
 
@@ -259,6 +263,9 @@ export function Toolbar({
 			</div>
 
 			<div className="pb-toolbar__end">
+				<button type="button" onClick={onPages} title="The site's pages: add, open, rename, menus, unpublish">
+					📄 Pages
+				</button>
 				<DeviceSwitch />
 				<button type="button" onClick={onPreview} title="See the page as visitors will, with your unpublished changes and without the editor">
 					👁 Preview
@@ -342,10 +349,32 @@ function ColorButton(props: {
 	);
 }
 
-function LinkPopover({ editor, onClose }: { editor: Editor; onClose: () => void }) {
+/** The site's pages and their addresses, fetched once per page load (for linking to them). */
+let sitePages: Promise<Array<{ title: string; url: string }>> | null = null;
+function loadSitePages(config: BuilderConfig) {
+	sitePages ??= Promise.all([listEntries(config.pages.collection), getCollectionInfo(config.pages.collection)])
+		.then(([pages, info]) =>
+			pages
+				.filter((p) => p.status === "published" || p.status === "draft")
+				.map((p) => ({ title: p.title, url: pageUrl(config.pages, p.slug, info.urlPattern) ?? "" }))
+				.filter((p) => p.url)
+				.sort((a, b) => a.title.localeCompare(b.title)),
+		)
+		.catch(() => []);
+	return sitePages;
+}
+
+function LinkPopover({ editor, config, onClose }: { editor: Editor; config: BuilderConfig; onClose: () => void }) {
 	const current = editor.getAttributes("link");
 	const [href, setHref] = React.useState<string>(current.href ?? "");
 	const [blank, setBlank] = React.useState(current.target === "_blank");
+	const [pages, setPages] = React.useState<Array<{ title: string; url: string }>>([]);
+	React.useEffect(() => {
+		void loadSitePages(config).then(setPages);
+	}, [config]);
+	// Typing a word (not an address) suggests the site's pages.
+	const q = href.trim().toLowerCase();
+	const suggestions = /^(https?:|mailto:|tel:|#)/.test(q) ? [] : pages.filter((p) => !q || p.title.toLowerCase().includes(q.replace(/^\//, "")) || p.url.includes(q)).slice(0, 6);
 	const apply = () => {
 		const chain = editor.chain().focus().extendMarkRange("link");
 		if (!href.trim()) chain.unsetLink().run();
@@ -360,7 +389,19 @@ function LinkPopover({ editor, onClose }: { editor: Editor; onClose: () => void 
 				apply();
 			}}
 		>
-			<input autoFocus placeholder="https://… or /page" value={href} onChange={(e) => setHref(e.target.value)} />
+			<input autoFocus placeholder="Search pages, or paste https://…" value={href} onChange={(e) => setHref(e.target.value)} />
+			{suggestions.length > 0 && !suggestions.some((s) => s.url === href) && (
+				<ul className="pb-link-pages">
+					{suggestions.map((s) => (
+						<li key={s.url}>
+							<button type="button" onClick={() => setHref(s.url)}>
+								{s.title}
+								<small>{s.url}</small>
+							</button>
+						</li>
+					))}
+				</ul>
+			)}
 			<label className="pb-toggle">
 				<input type="checkbox" checked={blank} onChange={(e) => setBlank(e.target.checked)} /> New tab
 			</label>

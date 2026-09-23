@@ -4,7 +4,8 @@ import { test } from "node:test";
 import { docToPortableText } from "../src/convert/from-doc.ts";
 import { portableTextToDoc } from "../src/convert/to-doc.ts";
 import { renderDocument } from "../src/render/html.ts";
-import { resolveConfig } from "../src/schema/config.ts";
+import { pageUrl, resolveConfig } from "../src/schema/config.ts";
+import { slugify } from "../src/editor/Pages.tsx";
 import { anyThemeToCss, responsiveCss } from "../src/schema/style.ts";
 import { BUILT_IN_PRESETS, presetValues } from "../src/schema/presets.ts";
 import { pageBackgroundCss, pageBackgroundVideo } from "../src/schema/background.ts";
@@ -324,4 +325,13 @@ test("a section's background video round-trips and uses its background image as 
 	const html = renderDocument(blocks, config).parts.join("");
 	assert.match(html, /class="pb-section pb-section--video"/);
 	assert.match(html, /<video class="pb-section__video" src="\/_emdash\/api\/media\/file\/v\.mp4" poster="\/p\.jpg" autoplay="" muted="" loop="" playsinline="" aria-hidden="true" tabindex="-1"> <\/video><div class="pb-section__body"><p>Hi<\/p><\/div>/);
+});
+
+test("page addresses: fixed routes, the collection's pattern, and slugs from titles", () => {
+	const pages = resolveConfig({ pages: { collection: "pages", protectedSlugs: ["home", "not-found"], urls: { "not-found": "/404" } } }).pages;
+	assert.equal(pageUrl(pages, "home", "/{slug}"), "/");
+	assert.equal(pageUrl(pages, "not-found", "/{slug}"), "/404");
+	assert.equal(pageUrl(pages, "about", "/pages/{slug}"), "/pages/about");
+	assert.equal(pageUrl(pages, null, "/{slug}"), null);
+	assert.equal(slugify("  Crème Brûlée & DJs!  "), "creme-brulee-djs");
 });

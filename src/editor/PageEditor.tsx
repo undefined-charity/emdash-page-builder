@@ -23,6 +23,7 @@ import { showPageBackground } from "./BackgroundPanel.js";
 import { BACKGROUND_KEY, cleanPageBackground, type PageBackground } from "../schema/background.js";
 import { Inspector } from "./Inspector.js";
 import { PreviewOverlay } from "./Preview.js";
+import { PagesPanel, type PageMeta } from "./Pages.js";
 import { sitePalette } from "./SitePanel.js";
 import { withNodeViews, previewStore } from "./nodeviews.js";
 import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
@@ -88,6 +89,7 @@ export function PageEditor(props: PageEditorProps) {
 	const [unpublished, setUnpublished] = React.useState(false);
 	const [publishing, setPublishing] = React.useState(false);
 	const [previewing, setPreviewing] = React.useState(false);
+	const [pagesOpen, setPagesOpen] = React.useState(false);
 	const pendingFields = usePendingFieldEdits();
 	const siteThemeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [slash, setSlashState] = React.useState<SlashState>(closedSlash);
@@ -343,6 +345,15 @@ export function PageEditor(props: PageEditorProps) {
 		window.addEventListener("pageshow", onShow);
 		return () => window.removeEventListener("pageshow", onShow);
 	}, []);
+
+	/** Save this page's title, address or search settings (from the Pages panel) along with its content. */
+	const saveMeta = async (meta: PageMeta) => {
+		if (timer.current) clearTimeout(timer.current);
+		await flush();
+		if (hold.current) throw new Error("This page can't be saved right now; see the ribbon.");
+		rev.current = (await saveEntry(props.collection, props.entryId, meta.data, { rev: rev.current, slug: meta.slug, seo: meta.seo })) ?? rev.current;
+		setUnpublished(true);
+	};
 
 	/** Save what's pending, then show the page as visitors will see it. */
 	const openPreview = async () => {
@@ -616,6 +627,7 @@ export function PageEditor(props: PageEditorProps) {
 				inspectorOpen={inspectorOpen}
 				onToggleInspector={() => setInspectorOpen((o) => !o)}
 				onPreview={() => void openPreview()}
+				onPages={() => setPagesOpen(true)}
 			/>
 			{inspectorOpen && (
 				<Inspector
@@ -645,6 +657,17 @@ export function PageEditor(props: PageEditorProps) {
 					onPickImages={(onPickMany) => setDialog({ kind: "media", onPick: () => undefined, onPickMany })}
 					onSaveReusable={(block) => setDialog({ kind: "saveReusable", block })}
 					onClose={() => setInspectorOpen(false)}
+				/>
+			)}
+			{/* Under any dialog it opens (the image picker). */}
+			{pagesOpen && (
+				<PagesPanel
+					config={config}
+					current={{ collection: props.collection, id: props.entryId }}
+					saveCurrent={saveMeta}
+					onOtherChanged={(page) => fieldEdits.add(page)}
+					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}
+					onClose={() => setPagesOpen(false)}
 				/>
 			)}
 			{previewing && <PreviewOverlay device={device} onClose={() => setPreviewing(false)} />}
@@ -682,6 +705,7 @@ export function PageEditor(props: PageEditorProps) {
 					}
 				/>
 			)}
+
 			{dialog?.kind === "copyBackground" && (
 				<PagesDialog
 					title="Use this background on other pages"

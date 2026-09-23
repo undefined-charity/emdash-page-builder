@@ -60,11 +60,17 @@ export async function saveEntry(
 	collection: string,
 	id: string,
 	data: Record<string, unknown>,
-	options: { keepalive?: boolean; rev?: string; overrideLock?: boolean } = {},
+	options: { keepalive?: boolean; rev?: string; overrideLock?: boolean; slug?: string; seo?: EntrySeo } = {},
 ): Promise<string | undefined> {
 	const result = await request<{ _rev?: string }>(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, {
 		method: "PUT",
-		body: JSON.stringify({ data, ...(options.rev ? { _rev: options.rev } : {}), ...(options.overrideLock ? { overrideLock: true } : {}) }),
+		body: JSON.stringify({
+			data,
+			...(options.rev ? { _rev: options.rev } : {}),
+			...(options.overrideLock ? { overrideLock: true } : {}),
+			...(options.slug ? { slug: options.slug } : {}),
+			...(options.seo ? { seo: options.seo } : {}),
+		}),
 		keepalive: options.keepalive,
 	});
 	return result?._rev;
@@ -107,6 +113,62 @@ export async function listEntries(collection: string): Promise<EntrySummary[]> {
 		title: String(it.title ?? (it.data as Record<string, unknown> | undefined)?.title ?? it.slug ?? it.id),
 		status: String(it.status ?? ""),
 	}));
+}
+
+// ── Pages ───────────────────────────────────────────────────────────────────
+
+export interface EntrySeo {
+	title?: string | null;
+	description?: string | null;
+	image?: string | null;
+	noIndex?: boolean;
+}
+
+export interface CollectionInfo {
+	/** e.g. `/{slug}`, or null for a collection with no pages of its own. */
+	urlPattern: string | null;
+	hasSeo: boolean;
+	fields: Array<{ slug: string; type: string; label: string }>;
+}
+
+export async function getCollectionInfo(collection: string): Promise<CollectionInfo> {
+	const data = await request<{ item?: { urlPattern?: string | null; hasSeo?: boolean; fields?: Array<{ slug: string; type: string; label?: string }> } }>(
+		`${API}/schema/collections/${encodeURIComponent(collection)}?includeFields=true`,
+	);
+	return {
+		urlPattern: data.item?.urlPattern ?? null,
+		hasSeo: data.item?.hasSeo === true,
+		fields: (data.item?.fields ?? []).map((f) => ({ slug: f.slug, type: f.type, label: f.label ?? f.slug })),
+	};
+}
+
+/** An entry with its SEO settings and revision token (its latest draft's fields). */
+export async function getEntry(collection: string, id: string): Promise<{ id: string; slug: string | null; status: string; seo: EntrySeo; data: Record<string, unknown>; rev?: string; unpublished: boolean }> {
+	const got = await request<{ item?: { id: string; slug?: string | null; status?: string; seo?: EntrySeo | null } }>(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`);
+	const latest = await loadLatest(collection, id);
+	return { id, slug: got.item?.slug ?? null, status: got.item?.status ?? "", seo: got.item?.seo ?? {}, data: latest.data, rev: latest.rev, unpublished: latest.unpublished };
+}
+
+/** Create a draft entry; returns it. */
+export async function createEntry(collection: string, body: { data: Record<string, unknown>; slug?: string }): Promise<{ id: string; slug: string | null }> {
+	const created = await request<{ item?: { id?: string; slug?: string | null } }>(`${API}/content/${encodeURIComponent(collection)}`, { method: "POST", body: JSON.stringify(body) });
+	if (!created.item?.id) throw new Error("The server did not return the new entry");
+	return { id: created.item.id, slug: created.item.slug ?? null };
+}
+
+export async function duplicateEntry(collection: string, id: string): Promise<{ id: string; slug: string | null }> {
+	const copy = await request<{ item?: { id?: string; slug?: string | null } }>(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/duplicate`, { method: "POST", body: "{}" });
+	if (!copy.item?.id) throw new Error("The server did not return the copy");
+	return { id: copy.item.id, slug: copy.item.slug ?? null };
+}
+
+export async function unpublishEntry(collection: string, id: string): Promise<void> {
+	await request(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/unpublish`, { method: "POST", body: "{}" });
+}
+
+/** Move an entry to the trash (restorable from the admin). */
+export async function trashEntry(collection: string, id: string): Promise<void> {
+	await request(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export async function getEntryField(collection: string, id: string, field: string): Promise<unknown> {
@@ -266,6 +328,12 @@ export async function saveSiteTheme(theme: Record<string, string>): Promise<void
 // ── Menus ─────────────────────────────────────────────────────────────────────
 //
 // EmDash menus have no drafts: every change here is live immediately.
+
+/** Every item of a menu, with where it links (for finding a page's items). */
+export async function menuItemsLinking(menu: string, url: string, entryId: string): Promise<string[]> {
+	const data = await request<{ items?: Array<Record<string, unknown>> }>(`${API}/menus/${encodeURIComponent(menu)}`);
+	return (data.items ?? []).filter((it) => it.customUrl === url || it.referenceId === entryId).map((it) => String(it.id));
+}
 
 export interface MenuItem {
 	id: string;
