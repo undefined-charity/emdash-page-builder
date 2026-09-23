@@ -20,6 +20,7 @@ import { ConflictError, LockedError, createPublishedEntry, fetchSlotPreviews, lo
 import { closedSlash, insertItems, slashExtension, type InsertContext, type InsertItem, type SlashState } from "./commands.js";
 import { MediaDialog, mediaToImageAttrs, PromptDialog, ReusableDialog } from "./Dialogs.js";
 import { Inspector } from "./Inspector.js";
+import { sitePalette } from "./SitePanel.js";
 import { withNodeViews, previewStore } from "./nodeviews.js";
 import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
 import { claimIfFree, releaseIfActive, setActive, useIsActive } from "./registry.js";
@@ -66,6 +67,8 @@ export function PageEditor(props: PageEditorProps) {
 	const [theme, setTheme] = React.useState<PageTheme>(() => cleanTheme(props.theme, config.themeTokens) ?? {});
 	const [siteTheme, setSiteTheme] = React.useState<PageTheme>({});
 	const [siteSettings, setSiteSettings] = React.useState<SiteSettings>({});
+	// The ribbon and panel offer the site's own colours first.
+	const chromeConfig = React.useMemo(() => ({ ...config, palette: sitePalette(siteSettings, config) }), [config, siteSettings]);
 	/** Saved changes that aren't live yet. */
 	const [unpublished, setUnpublished] = React.useState(false);
 	const [publishing, setPublishing] = React.useState(false);
@@ -427,6 +430,24 @@ export function PageEditor(props: PageEditorProps) {
 		}, 800);
 	};
 
+	/** A look tried on (a theme preset), shown over the site design until it's used or dropped. */
+	const previewSiteTheme = (next: PageTheme | null) => {
+		let el = document.querySelector<HTMLStyleElement>("style[data-pb-site-preview]");
+		if (!next) {
+			el?.remove();
+			return;
+		}
+		if (!el) {
+			el = document.createElement("style");
+			el.setAttribute("data-pb-site-preview", "");
+			// After the site design, before the page's own (which still wins).
+			const anchor = document.querySelector("style[data-pb-site-theme]");
+			if (anchor) anchor.after(el);
+			else document.head.append(el);
+		}
+		el.textContent = anyThemeToCss(next) ?? "";
+	};
+
 	const changeSiteSettings = (next: SiteSettings) => {
 		setSiteSettings(next);
 		setSave({ state: "saving" });
@@ -521,7 +542,7 @@ export function PageEditor(props: PageEditorProps) {
 		<>
 			<Toolbar
 				editor={editor}
-				config={config}
+				config={chromeConfig}
 				title={props.region ? `${props.region} — every page` : props.title}
 				save={save}
 				onSaveNow={() => void flush()}
@@ -535,7 +556,7 @@ export function PageEditor(props: PageEditorProps) {
 			{inspectorOpen && (
 				<Inspector
 					editor={editor}
-					config={config}
+					config={chromeConfig}
 					theme={theme}
 					onTheme={(t) => {
 						setTheme(t);
@@ -545,6 +566,7 @@ export function PageEditor(props: PageEditorProps) {
 					onSiteTheme={changeSiteTheme}
 					siteSettings={siteSettings}
 					onSiteSettings={changeSiteSettings}
+					onPreviewSiteTheme={previewSiteTheme}
 					pageTab={!props.region && Boolean(props.themeField)}
 					onRefreshPreviews={() => void fetchSlotPreviews(props.rootId).then(previewStore.set).catch(() => undefined)}
 					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}

@@ -5,9 +5,10 @@
  * be passed from Astro to the editor island as a prop.
  */
 
+import type { ThemePreset } from "./presets.js";
 import type { ThemeToken } from "./style.js";
 
-export type { ThemeToken };
+export type { ThemePreset, ThemeToken };
 
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -80,6 +81,8 @@ export interface BuilderConfig {
 	sectionStyles: SectionStyle[];
 	buttonStyles: ButtonStyle[];
 	externalBlocks: ExternalBlock[];
+	/** Ready-made looks offered on the Site tab, before the built-in ones. */
+	themePresets: ThemePreset[];
 	/** Collection holding reusable blocks (fields: title, content). */
 	reusableCollection: string;
 	/**
@@ -101,6 +104,7 @@ export const DEFAULT_CONFIG: BuilderConfig = {
 		{ name: "secondary", label: "Secondary", className: "button secondary" },
 	],
 	externalBlocks: [],
+	themePresets: [],
 	reusableCollection: "reusable_blocks",
 	phoneBreakpoint: 640,
 };
@@ -114,6 +118,7 @@ export function resolveConfig(partial?: Partial<BuilderConfig>): BuilderConfig {
 		sectionStyles: partial?.sectionStyles?.length ? partial.sectionStyles : DEFAULT_CONFIG.sectionStyles,
 		buttonStyles: partial?.buttonStyles?.length ? partial.buttonStyles : DEFAULT_CONFIG.buttonStyles,
 		externalBlocks: partial?.externalBlocks ?? [],
+		themePresets: partial?.themePresets ?? [],
 		reusableCollection: partial?.reusableCollection ?? DEFAULT_CONFIG.reusableCollection,
 		phoneBreakpoint: partial?.phoneBreakpoint && partial.phoneBreakpoint > 0 ? partial.phoneBreakpoint : DEFAULT_CONFIG.phoneBreakpoint,
 	};
@@ -123,12 +128,26 @@ export function resolveConfig(partial?: Partial<BuilderConfig>): BuilderConfig {
 export interface SiteSettings {
 	/** A back-to-top button on every page, shown once the visitor scrolls down. */
 	backToTop?: boolean;
+	/**
+	 * The site's own named colours, offered first in every colour picker. Each
+	 * colour's value is the site-theme token `--pb-color-<slug>`, so a block
+	 * using it follows when it changes.
+	 */
+	palette?: Array<{ slug: string; label: string }>;
 }
 
 export function cleanSiteSettings(value: unknown): SiteSettings {
 	const v = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
-	return { ...(v.backToTop === true ? { backToTop: true } : {}) };
+	const palette = Array.isArray(v.palette)
+		? v.palette
+				.filter((c): c is { slug: string; label: string } => !!c && typeof c.slug === "string" && /^[a-z0-9-]{1,40}$/.test(c.slug) && typeof c.label === "string")
+				.map((c) => ({ slug: c.slug, label: c.label.slice(0, 60) }))
+		: [];
+	return { ...(v.backToTop === true ? { backToTop: true } : {}), ...(palette.length ? { palette } : {}) };
 }
+
+/** A site colour's token. */
+export const paletteVar = (slug: string) => `--pb-color-${slug}`;
 
 export function findTextStyle(config: BuilderConfig, name: unknown): TextStyle | undefined {
 	return typeof name === "string" ? config.textStyles.find((s) => s.name === name) : undefined;

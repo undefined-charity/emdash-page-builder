@@ -197,8 +197,13 @@ export function responsiveCss(breakpoint: number): string {
 
 // ── Page theme ────────────────────────────────────────────────────────────────
 
+/** What a theme token is for, so theme presets know which tokens to set. */
+export type ThemeRole = "background" | "text" | "accent" | "heading" | "heading-font" | "body-font";
+
 /** A CSS custom property the site exposes for per-page overrides. */
 export interface ThemeToken {
+	/** Guessed from the name and label when not given (`--page-bg` is the background). */
+	role?: ThemeRole;
 	/** e.g. `--accent-pink` */
 	name: string;
 	label: string;
@@ -250,7 +255,8 @@ export function cleanAnyTheme(value: unknown): PageTheme | undefined {
 	const out: PageTheme = {};
 	for (const [name, raw] of Object.entries(value as Record<string, unknown>)) {
 		if (!/^--[a-z0-9-]{1,60}$/.test(name)) continue;
-		const ok = safeColor(raw) ?? safeLength(raw) ?? safeFont(raw);
+		const ts = TEXT_STYLE_VAR.exec(name);
+		const ok = ts ? cleanTextStyleValue(ts[2] as TextStyleProp, raw) : (safeColor(raw) ?? safeLength(raw) ?? safeFont(raw));
 		if (ok) out[name] = ok;
 	}
 	return Object.keys(out).length ? out : undefined;
@@ -259,7 +265,89 @@ export function cleanAnyTheme(value: unknown): PageTheme | undefined {
 export function anyThemeToCss(value: unknown): string | undefined {
 	const theme = cleanAnyTheme(value);
 	if (!theme) return undefined;
-	return `${SITE_SCOPE} { ${Object.entries(theme)
+	const vars = `${SITE_SCOPE} { ${Object.entries(theme)
 		.map(([k, v]) => `${k}: ${v};`)
 		.join(" ")} }`;
+	return [vars, textStylesCss(theme)].filter(Boolean).join("\n");
+}
+
+// ── Site-wide text styles ─────────────────────────────────────────────────────
+
+/** What a text style can set, and the CSS property each is. */
+export const TEXT_STYLE_PROPS = {
+	font: "font-family",
+	size: "font-size",
+	weight: "font-weight",
+	leading: "line-height",
+	tracking: "letter-spacing",
+	color: "color",
+	case: "text-transform",
+} as const;
+export type TextStyleProp = keyof typeof TEXT_STYLE_PROPS;
+
+/**
+ * The built-in text styles and the elements each one styles. A site's named
+ * styles (`lead`, `display`…) are keyed `s-<name>`.
+ */
+export const TEXT_STYLE_ELEMENTS: Record<string, string> = {
+	h1: "h1",
+	h2: "h2",
+	h3: "h3",
+	h4: "h4",
+	// Normal text, except inside a block with its own style override, which
+	// its text inherits.
+	p: ":is(p, li):not([data-pb-styled] *)",
+	// As specific as normal text, plus one, so a quote's paragraphs follow the quote.
+	quote: ":is(blockquote, blockquote p):not([data-pb-styled] *)",
+	button: ".pb-button",
+};
+
+const TEXT_STYLE_VAR = /^--pb-ts-([a-z0-9]+(?:-[a-z0-9]+)*?)-(font|size|weight|leading|tracking|color|case)$/;
+
+/** The site-theme key holding one property of one text style, e.g. `--pb-ts-h1-color`. */
+export function textStyleVar(style: string, prop: TextStyleProp): string {
+	return `--pb-ts-${style}-${prop}`;
+}
+
+export function cleanTextStyleValue(prop: TextStyleProp, raw: unknown): string | undefined {
+	if (typeof raw !== "string") return undefined;
+	const v = raw.trim();
+	switch (prop) {
+		case "color":
+			return safeColor(v);
+		case "size":
+		case "tracking":
+			return safeLength(v);
+		case "font":
+			return safeFont(v);
+		case "weight":
+			return /^([1-9]00|normal|bold)$/.test(v) ? v : undefined;
+		case "leading":
+			return /^\d+(\.\d+)?$/.test(v) ? v : safeLength(v);
+		case "case":
+			return /^(none|uppercase|lowercase|capitalize)$/.test(v) ? v : undefined;
+	}
+}
+
+/**
+ * Rules applying the site's text styles. Specific enough to beat the site's
+ * own stylesheet (`.hero h1`), but not `!important`, so a block's own style
+ * override (inline) and formatting on a selection still win.
+ */
+export function textStylesCss(theme: PageTheme): string {
+	const byStyle = new Map<string, string[]>();
+	for (const [name, value] of Object.entries(theme)) {
+		const m = TEXT_STYLE_VAR.exec(name);
+		if (!m) continue;
+		const [, style, prop] = m;
+		const decl = `${TEXT_STYLE_PROPS[prop as TextStyleProp]}: ${value}`;
+		byStyle.set(style, [...(byStyle.get(style) ?? []), decl]);
+	}
+	const rules: string[] = [];
+	for (const [style, decls] of byStyle) {
+		// A named style (a lead paragraph, a display heading) beats the style of its element.
+		const el = TEXT_STYLE_ELEMENTS[style] ? `${PAGE_SCOPE} ${TEXT_STYLE_ELEMENTS[style]}` : style.startsWith("s-") ? `${PAGE_SCOPE}:root:root [data-pb-style="${style.slice(2)}"]` : null;
+		if (el) rules.push(`${el} { ${decls.join("; ")}; }`);
+	}
+	return rules.join("\n");
 }

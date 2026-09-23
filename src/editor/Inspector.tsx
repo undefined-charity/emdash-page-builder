@@ -11,6 +11,7 @@ import { HIDEABLE_TYPES, SPACER_SIZES, STYLABLE_TYPES } from "../schema/extensio
 import { cleanBlockStyle, cleanHide, cleanPhoneStyle, type BlockStyle, type PageTheme, type PhoneStyle } from "../schema/style.js";
 import { cleanGalleryImages, videoSource, type GalleryImage } from "../schema/media.js";
 import { useDevice } from "./device.js";
+import { PaletteGroup, PresetsGroup, TextStylesGroup, type SiteDesignProps } from "./SitePanel.js";
 import { loadOptions } from "./api.js";
 import { MenuEditor } from "./MenuEditor.js";
 import {
@@ -36,9 +37,11 @@ export interface InspectorProps {
 	/** Site-wide design defaults every page inherits. */
 	siteTheme: PageTheme;
 	onSiteTheme: (theme: PageTheme) => void;
-	/** Site-wide page options (the back-to-top button). */
+	/** Site-wide page options (the back-to-top button, the site's colours). */
 	siteSettings: SiteSettings;
 	onSiteSettings: (settings: SiteSettings) => void;
+	/** Show a site design on the page without saving it (null: stop). */
+	onPreviewSiteTheme: (theme: PageTheme | null) => void;
 	onPickImage: (onPick: (attrs: Record<string, unknown>) => void) => void;
 	onPickVideo: (onPick: (attrs: Record<string, unknown>) => void) => void;
 	onPickImages: (onPick: (list: Array<Record<string, unknown>>) => void) => void;
@@ -70,6 +73,15 @@ export function Inspector(props: InspectorProps) {
 	}, [editor]);
 
 	const chain = ancestry(editor);
+	const siteDesign: SiteDesignProps = {
+		config,
+		theme: props.siteTheme,
+		onTheme: props.onSiteTheme,
+		settings: props.siteSettings,
+		onSettings: props.onSiteSettings,
+		onPreview: props.onPreviewSiteTheme,
+		palette: config.palette,
+	};
 	const current = (focusDepth !== null ? chain.find((c) => c.depth === focusDepth) : undefined) ?? chain[chain.length - 1];
 	const externalLabel = (type: string) => config.externalBlocks.find((b) => b.type === type)?.label;
 
@@ -135,6 +147,13 @@ export function Inspector(props: InspectorProps) {
 					onTheme={props.onSiteTheme}
 					intro="The default look of every page on the site: fonts, text sizes and colours. Pages can still override these on the Page tab, and any block or selection in the Block tab or the ribbon. Saved as you change it."
 					resetLabel="Reset the whole site to its built-in design"
+					before={
+						<>
+							<PresetsGroup {...siteDesign} />
+							<TextStylesGroup {...siteDesign} />
+							<PaletteGroup {...siteDesign} />
+						</>
+					}
 				>
 					<Group title="Every page">
 						<Toggle
@@ -818,6 +837,7 @@ function ThemePanel({
 	intro,
 	resetLabel,
 	children,
+	before,
 }: {
 	config: BuilderConfig;
 	theme: PageTheme;
@@ -828,11 +848,14 @@ function ThemePanel({
 	resetLabel: string;
 	/** More settings after the theme's. */
 	children?: React.ReactNode;
+	/** More settings before the theme's. */
+	before?: React.ReactNode;
 }) {
 	if (config.themeTokens.length === 0)
 		return (
 			<div className="pb-inspector__body">
-				<p className="pb-empty">This site doesn't expose any theme settings.</p>
+				{before}
+				{!before && <p className="pb-empty">This site doesn't expose any theme settings.</p>}
 				{children}
 			</div>
 		);
@@ -847,6 +870,7 @@ function ThemePanel({
 	return (
 		<div className="pb-inspector__body">
 			<p className="pb-hint">{intro}</p>
+			{before}
 			{[...groups].map(([group, tokens]) => (
 				<Group key={group} title={group}>
 					{tokens.map((t) =>

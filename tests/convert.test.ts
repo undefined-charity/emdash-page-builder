@@ -5,7 +5,8 @@ import { docToPortableText } from "../src/convert/from-doc.ts";
 import { portableTextToDoc } from "../src/convert/to-doc.ts";
 import { renderDocument } from "../src/render/html.ts";
 import { resolveConfig } from "../src/schema/config.ts";
-import { responsiveCss } from "../src/schema/style.ts";
+import { anyThemeToCss, responsiveCss } from "../src/schema/style.ts";
+import { BUILT_IN_PRESETS, presetValues } from "../src/schema/presets.ts";
 import { answerVw, answerWidth } from "../src/editor/device.ts";
 
 const config = resolveConfig({
@@ -270,4 +271,35 @@ test("galleries round-trip, keep their key, and open images in popovers", () => 
 	assert.match(html, /popovertarget="pb-lb-gal1-0"/);
 	assert.match(html, /<div id="pb-lb-gal1-1" popover="" class="pb-lightbox">/);
 	assert.match(html, /<figcaption>Bee<\/figcaption>/);
+});
+
+test("site text styles become rules; named styles beat their element, and bad values are dropped", () => {
+	const css = anyThemeToCss({
+		"--pb-ts-h1-color": "#ff00d2",
+		"--pb-ts-h1-case": "uppercase",
+		"--pb-ts-p-leading": "1.6",
+		"--pb-ts-s-lead-weight": "700",
+		"--pb-ts-h2-weight": "heavy; color: red",
+		"--pb-ts-h3-leading": "1.4; x",
+	})!;
+	assert.match(css, /:root:root:root h1 \{ color: #ff00d2; text-transform: uppercase; \}/);
+	assert.match(css, /:root:root:root :is\(p, li\):not\(\[data-pb-styled\] \*\) \{ line-height: 1\.6; \}/);
+	assert.match(css, /:root:root:root:root:root \[data-pb-style="lead"\] \{ font-weight: 700; \}/);
+	assert.ok(!css.includes("heavy") && !css.includes("1.4; x"), css);
+});
+
+test("presets set the site's tokens by role, or text styles where it has none", () => {
+	const tokens = [
+		{ name: "--page-bg", label: "Page background", type: "color" as const },
+		{ name: "--accent-pink", label: "Pink accent", type: "color" as const },
+		{ name: "--font-display", label: "Heading font", type: "font" as const },
+	];
+	const preset = BUILT_IN_PRESETS.find((p) => p.name === "editorial")!;
+	const values = presetValues(preset, tokens);
+	assert.equal(values["--page-bg"], "#fbf7f0");
+	assert.equal(values["--accent-pink"], "#b4532a");
+	assert.match(values["--font-display"], /Georgia/);
+	// No heading-colour or text-colour token: the text styles take them.
+	assert.equal(values["--pb-ts-h1-color"], "#1f1a17");
+	assert.equal(values["--pb-ts-p-color"], "#2b2622");
 });

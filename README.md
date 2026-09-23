@@ -22,7 +22,10 @@ Content is stored as ordinary Portable Text in the entry's rich-text field, so t
 - **A side panel** with the selected block's settings and a breadcrumb to reach the blocks around it, plus:
   - **Style** — text/background/border colour, background image, padding, rounded corners, width, height, text size, font — per block
   - **Page** — the site's design tokens (colours, fonts, sizes) overridden for this page only
-  - **Site** — the same tokens as the site-wide defaults every page inherits
+  - **Site** — the same tokens as the site-wide defaults every page inherits, plus:
+    - **Looks**: ready-made palettes and font pairings. Point at one to try it on the page; click to use it everywhere. They set the site's own tokens by role (background, text, accent, heading colour, heading and body fonts), which is guessed from each token's name or set with `role` on the token. Sites can add their own with `themePresets`.
+    - **Text styles**: font, size, weight, line height, letter spacing, colour and case for Heading 1–4, normal text, quotes, button text and the site's named styles. They apply on every page, and a block's own style still wins.
+    - **Site colours**: named colours offered first in every colour picker. Anything using one changes when it does.
 - **Phones**: the ribbon's 🖥 / 📱 switch (<kbd>⌥⌘P</kbd> / <kbd>Ctrl+Alt+P</kbd>) shows the page at phone width, laid out as a phone lays it out, and it stays editable. In the phone view the **Style** group, text alignment and image size and position are saved for phones only; the desktop look is untouched. **Show on** hides any block on phones or on desktops; hidden blocks stay visible but dimmed while editing, and **Hidden blocks** in the side panel lists them.
 - **Back-to-top button**: a Site tab option that adds a button to every page once a visitor scrolls down (no JavaScript).
 - **Site regions**: the header and footer are builder documents too, edited in place from any page; the ribbon says when you're editing something shared.

@@ -28,10 +28,11 @@ import { cleanSiteSettings } from "./schema/config.js";
 import { cleanAnyTheme } from "./schema/style.js";
 
 export type { BuilderConfig, ExternalBlock, ExternalField, SectionStyle, TextStyle, ButtonStyle, SiteSettings } from "./schema/config.js";
-export type { ThemeToken, BlockStyle, PageTheme } from "./schema/style.js";
+export type { ThemeToken, ThemeRole, BlockStyle, PageTheme } from "./schema/style.js";
+export type { ThemePreset } from "./schema/presets.js";
 
 const ID = "page-builder";
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 const ADMIN_PAGES = [{ path: "/", label: "Page Builder", icon: "layout" }];
 
 export interface PageBuilderOptions {
