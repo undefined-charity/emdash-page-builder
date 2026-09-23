@@ -10,7 +10,7 @@
  */
 import * as React from "react";
 
-import { ConflictError, loadLatest, saveEntry } from "./api.js";
+import { ConflictError, LockedError, loadLatest, saveEntry } from "./api.js";
 
 interface Ref {
 	collection: string;
@@ -68,14 +68,21 @@ export function usePendingFieldEdits(): Pending[] {
 // ── Saving ────────────────────────────────────────────────────────────────────
 
 async function saveField(ref: Ref, value: string): Promise<void> {
-	for (let attempt = 0; attempt < 2; attempt++) {
+	let overrideLock = false;
+	for (let attempt = 0; attempt < 3; attempt++) {
 		const { rev } = await loadLatest(ref.collection, ref.id);
 		try {
-			await saveEntry(ref.collection, ref.id, { [ref.field]: value }, { rev });
+			await saveEntry(ref.collection, ref.id, { [ref.field]: value }, { rev, overrideLock });
 			return;
 		} catch (e) {
+			// Someone has the entry open in the admin: ask before writing over it.
+			if (e instanceof LockedError && !overrideLock) {
+				if (!window.confirm(`${e.holder} has this entry open in the admin. Save your change anyway?`)) throw e;
+				overrideLock = true;
+				continue;
+			}
 			// Someone saved in between: re-read and try once more.
-			if (!(e instanceof ConflictError) || attempt === 1) throw e;
+			if (!(e instanceof ConflictError) || attempt === 2) throw e;
 		}
 	}
 }

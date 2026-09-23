@@ -16,7 +16,7 @@ import { newKey } from "../convert/types.js";
 import type { BuilderConfig } from "../schema/config.js";
 import { builderExtensions } from "../schema/extensions.js";
 import { anyThemeToCss, cleanAnyTheme, cleanTheme, themeToCss, type PageTheme } from "../schema/style.js";
-import { ConflictError, createPublishedEntry, fetchSlotPreviews, loadLatest, loadSiteTheme, publishEntry, saveEntry, saveSiteTheme, uploadImage } from "./api.js";
+import { ConflictError, LockedError, createPublishedEntry, fetchSlotPreviews, loadLatest, loadSiteTheme, publishEntry, saveEntry, saveSiteTheme, uploadImage } from "./api.js";
 import { closedSlash, insertItems, slashExtension, type InsertContext, type InsertItem, type SlashState } from "./commands.js";
 import { MediaDialog, mediaToImageAttrs, PromptDialog, ReusableDialog } from "./Dialogs.js";
 import { Inspector } from "./Inspector.js";
@@ -60,7 +60,7 @@ export function PageEditor(props: PageEditorProps) {
 	const isActive = useIsActive(props.rootId);
 	const [dialog, setDialog] = React.useState<Dialog>(null);
 	const [inspectorOpen, setInspectorOpen] = React.useState(true);
-	const [save, setSave] = React.useState<{ state: SaveState; error?: string }>({ state: "loading" });
+	const [save, setSave] = React.useState<{ state: SaveState; error?: string; holder?: string }>({ state: "loading" });
 	const [theme, setTheme] = React.useState<PageTheme>(() => cleanTheme(props.theme, config.themeTokens) ?? {});
 	const [siteTheme, setSiteTheme] = React.useState<PageTheme>({});
 	/** Saved changes that aren't live yet. */
@@ -89,7 +89,7 @@ export function PageEditor(props: PageEditorProps) {
 	/** Revision token of the version this editor last loaded or saved. */
 	const rev = React.useRef<string | undefined>(undefined);
 	/** Saving is held until the latest version is confirmed, and after a conflict. */
-	const hold = React.useRef<"loading" | "conflict" | null>("loading");
+	const hold = React.useRef<"loading" | "conflict" | "locked" | null>("loading");
 
 	// Stable, or the drag handle re-registers its plugin on every render.
 	const onHandleNode = React.useCallback(({ node, pos }: { node: { nodeSize: number } | null; pos: number }) => {
@@ -183,7 +183,7 @@ export function PageEditor(props: PageEditorProps) {
 		timer.current = setTimeout(() => void flush(), AUTOSAVE_MS);
 	}
 
-	async function flush(options: { keepalive?: boolean } = {}): Promise<void> {
+	async function flush(options: { keepalive?: boolean; overrideLock?: boolean } = {}): Promise<void> {
 		const editor = editorRef.current;
 		if (!editor || hold.current) return;
 		if (saving.current) await saving.current;
@@ -206,6 +206,14 @@ export function PageEditor(props: PageEditorProps) {
 				// Put the changes back; they're still in the editor.
 				if (props.field in data) dirty.current.body = true;
 				if (props.themeField in data) dirty.current.theme = true;
+				if (e instanceof LockedError) {
+					// Someone has it open in the admin. Keep the changes; don't retry blindly.
+					hold.current = "locked";
+					if (timer.current) clearTimeout(timer.current);
+					setSave({ state: "locked", error: e.message, holder: e.holder });
+					document.dispatchEvent(new CustomEvent("emdash:save", { detail: { state: "error" } }));
+					return;
+				}
 				if (e instanceof ConflictError) {
 					// Someone else saved in between. Never overwrite silently.
 					hold.current = "conflict";
@@ -316,10 +324,18 @@ export function PageEditor(props: PageEditorProps) {
 			setUnpublished(false);
 			document.dispatchEvent(new CustomEvent("emdash:content-changed", { detail: { collection: props.collection, id: props.entryId } }));
 		} catch (e) {
-			setSave({ state: "error", error: `Publish failed: ${e instanceof Error ? e.message : e}` });
+			setSave({
+				state: "error",
+				error: e instanceof LockedError ? `Not published: ${e.holder} has it open in the admin. Try again once they've closed it.` : `Publish failed: ${e instanceof Error ? e.message : e}`,
+			});
 		} finally {
 			setPublishing(false);
 		}
+	};
+
+	const resolveLock = async (override: boolean) => {
+		hold.current = null;
+		await flush({ overrideLock: override });
 	};
 
 	const resolveConflict = async (keep: "mine" | "theirs") => {
@@ -459,6 +475,7 @@ export function PageEditor(props: PageEditorProps) {
 				save={save}
 				onSaveNow={() => void flush()}
 				onResolveConflict={(keep) => void resolveConflict(keep)}
+				onResolveLock={(override) => void resolveLock(override)}
 				publish={{ unpublished: unpublished || pendingFields.length > 0, also: pendingFields.map((p) => p.label), busy: publishing, run: () => void publish() }}
 				insert={{ items, run: (item) => runItem(item) }}
 				inspectorOpen={inspectorOpen}

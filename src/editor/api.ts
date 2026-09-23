@@ -13,13 +13,27 @@ export class ConflictError extends Error {
 	}
 }
 
+/**
+ * Someone else has the entry open in EmDash's admin (EmDash 0.38+ entry
+ * locks). Writing anyway needs `overrideLock`.
+ */
+export class LockedError extends Error {
+	constructor(
+		message: string,
+		readonly holder: string,
+	) {
+		super(message);
+		this.name = "LockedError";
+	}
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 	const headers = new Headers(init.headers);
 	headers.set("X-EmDash-Request", "1");
 	if (init.body && !(init.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 	const res = await fetch(path.startsWith("/") ? path : `${API}/${path}`, { credentials: "same-origin", ...init, headers });
 	const text = await res.text();
-	let json: { success?: boolean; data?: T; error?: { message?: string } } | undefined;
+	let json: { success?: boolean; data?: T; error?: { message?: string; code?: string; details?: { userName?: string } } } | undefined;
 	try {
 		json = text ? JSON.parse(text) : undefined;
 	} catch {
@@ -27,6 +41,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 	}
 	if (!res.ok || json?.success === false) {
 		const message = json?.error?.message ?? `${res.status} ${res.statusText}`.trim();
+		if (res.status === 409 && json?.error?.code === "ENTRY_LOCKED") throw new LockedError(message, json.error.details?.userName || "Someone");
 		if (res.status === 409) throw new ConflictError(message);
 		throw new Error(message);
 	}
@@ -43,11 +58,11 @@ export async function saveEntry(
 	collection: string,
 	id: string,
 	data: Record<string, unknown>,
-	options: { keepalive?: boolean; rev?: string } = {},
+	options: { keepalive?: boolean; rev?: string; overrideLock?: boolean } = {},
 ): Promise<string | undefined> {
 	const result = await request<{ _rev?: string }>(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, {
 		method: "PUT",
-		body: JSON.stringify({ data, ...(options.rev ? { _rev: options.rev } : {}) }),
+		body: JSON.stringify({ data, ...(options.rev ? { _rev: options.rev } : {}), ...(options.overrideLock ? { overrideLock: true } : {}) }),
 		keepalive: options.keepalive,
 	});
 	return result?._rev;
@@ -109,8 +124,11 @@ export async function createPublishedEntry(collection: string, data: Record<stri
 	return id;
 }
 
-export async function publishEntry(collection: string, id: string): Promise<void> {
-	await request(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/publish`, { method: "POST", body: "{}" });
+export async function publishEntry(collection: string, id: string, options: { overrideLock?: boolean } = {}): Promise<void> {
+	await request(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/publish`, {
+		method: "POST",
+		body: JSON.stringify(options.overrideLock ? { overrideLock: true } : {}),
+	});
 }
 
 // ── Media ─────────────────────────────────────────────────────────────────────

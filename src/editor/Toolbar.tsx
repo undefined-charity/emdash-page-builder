@@ -10,7 +10,7 @@ import type { BuilderConfig } from "../schema/config.js";
 import type { InsertItem } from "./commands.js";
 import { applyTextStyle } from "./Inspector.js";
 
-export type SaveState = "loading" | "saved" | "dirty" | "saving" | "error" | "conflict";
+export type SaveState = "loading" | "saved" | "dirty" | "saving" | "error" | "conflict" | "locked";
 
 const STATUS: Record<SaveState, string> = {
 	loading: "Loading…",
@@ -19,6 +19,7 @@ const STATUS: Record<SaveState, string> = {
 	saving: "Saving…",
 	error: "Save failed — retrying",
 	conflict: "Changed elsewhere — not saved",
+	locked: "Open in the admin — not saved",
 };
 
 export function Toolbar({
@@ -28,6 +29,7 @@ export function Toolbar({
 	save,
 	onSaveNow,
 	onResolveConflict,
+	onResolveLock,
 	publish,
 	insert,
 	inspectorOpen,
@@ -36,9 +38,11 @@ export function Toolbar({
 	editor: Editor;
 	config: BuilderConfig;
 	title: string;
-	save: { state: SaveState; error?: string };
+	save: { state: SaveState; error?: string; holder?: string };
 	onSaveNow: () => void;
 	onResolveConflict: (keep: "mine" | "theirs") => void;
+	/** Retry a save refused by an admin edit lock, optionally overriding it. */
+	onResolveLock: (override: boolean) => void;
 	publish: { unpublished: boolean; also?: string[]; busy: boolean; run: () => void };
 	insert: { items: InsertItem[]; run: (item: InsertItem) => void };
 	inspectorOpen: boolean;
@@ -91,6 +95,18 @@ export function Toolbar({
 					{STATUS[save.state]}
 				</button>
 			</div>
+
+			{save.state === "locked" && (
+				<div className="pb-toolbar__group pb-conflict" role="alert">
+					<span>{save.holder ?? "Someone"} has this open in the admin, so your changes aren't saved yet. They're kept here.</span>
+					<button type="button" onClick={() => onResolveLock(false)} title="Save once they've closed it">
+						Try again
+					</button>
+					<button type="button" onClick={() => onResolveLock(true)} title="Save over their lock. Changes they then save in the admin may replace yours.">
+						Save anyway
+					</button>
+				</div>
+			)}
 
 			{save.state === "conflict" && (
 				<div className="pb-toolbar__group pb-conflict" role="alert">
