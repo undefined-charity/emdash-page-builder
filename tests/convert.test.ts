@@ -5,6 +5,8 @@ import { docToPortableText } from "../src/convert/from-doc.ts";
 import { portableTextToDoc } from "../src/convert/to-doc.ts";
 import { renderDocument } from "../src/render/html.ts";
 import { resolveConfig } from "../src/schema/config.ts";
+import { responsiveCss } from "../src/schema/style.ts";
+import { answerVw, answerWidth } from "../src/editor/device.ts";
 
 const config = resolveConfig({
 	textStyles: [
@@ -156,4 +158,54 @@ test("blocks without settings survive EmDash's admin editor, which adds empty id
 	assert.deepEqual(saved[0], { _type: "site.eventContent", _key: "a", pbBlock: true });
 	// The admin's empty id is dropped; real settings stay.
 	assert.deepEqual(saved[1], { _type: "site.menu", _key: "b", menu: "primary" });
+});
+
+test("phone overrides and hidden blocks round-trip, lists and quotes included", () => {
+	const blocks = [
+		{ _type: "block", _key: "a", style: "h2", pbHide: "phone", pbStylePhone: { fontSize: "1.5rem", textAlign: "center" }, markDefs: [], children: [span("Big")] },
+		{ _type: "block", _key: "b", style: "normal", listItem: "bullet", level: 1, pbHide: "desktop", markDefs: [], children: [span("one")] },
+		{ _type: "block", _key: "c", style: "normal", listItem: "bullet", level: 1, pbHide: "desktop", markDefs: [], children: [span("two")] },
+		{ _type: "block", _key: "d", style: "blockquote", pbStyle: { color: "#ff00d2" }, markDefs: [], children: [span("Quote")] },
+		{ _type: "image", _key: "e", asset: { _ref: "m", url: "/x.jpg" }, alt: "", pbStylePhone: { width: "200px", align: "center" } },
+		{ _type: "break", _key: "f", style: "lineBreak", pbHide: "phone" },
+		{ _type: "pb.spacer", _key: "g", size: "l", pbHide: "desktop" },
+		{ _type: "site.nextEvent", _key: "h", pbHide: "phone", showTime: true },
+	];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(normalize(once), normalize(blocks));
+});
+
+test("hostile phone overrides are dropped", () => {
+	const doc = portableTextToDoc([{ _type: "block", style: "normal", pbHide: "sometimes", pbStylePhone: { fontSize: "1rem; color: red", textAlign: "sideways", width: "10px" }, children: [span("x")] }], config);
+	assert.deepEqual(doc.content?.[0].attrs, { pbStylePhone: { width: "10px" } });
+});
+
+test("hidden blocks and phone styles render as classes and custom properties", () => {
+	const { parts, slots } = renderDocument(
+		[
+			{ _type: "block", style: "normal", pbHide: "phone", pbStylePhone: { fontSize: "0.875rem", align: "wide" }, markDefs: [], children: [span("x")] },
+			{ _type: "site.nextEvent", _key: "n", pbHide: "desktop" },
+		],
+		config,
+	);
+	assert.match(parts[0], /<p [^>]*data-pb-phone="fontSize align-wide"/);
+	assert.match(parts[0], /<p [^>]*class="pb-hide-phone"/);
+	assert.match(parts[0], /style="--pbp-fontSize: 0.875rem"/);
+	assert.equal(slots[0].hide, "desktop");
+});
+
+test("the responsive rules use the configured breakpoint and spare the editor", () => {
+	const css = responsiveCss(700);
+	assert.match(css, /@media \(max-width: 700px\) \{ \.pb-hide-phone:not\(\.pb-editor-content \*\)/);
+	assert.match(css, /@media \(min-width: 700\.02px\)/);
+	assert.match(css, /\[data-pb-phone~="fontSize"\] \{ font-size: var\(--pbp-fontSize\) !important/);
+});
+
+test("the phone view answers width queries and vw lengths for a phone", () => {
+	assert.equal(answerWidth("(max-width: 640px)", 390), "(min-width: 0px)");
+	assert.equal(answerWidth("screen and (min-width: 48em)", 390), "screen and (max-width: 0px)");
+	assert.equal(answerWidth("(width <= 700px) and (prefers-reduced-motion: reduce)", 390), "(min-width: 0px) and (prefers-reduced-motion: reduce)");
+	assert.equal(answerWidth("print", 390), "print");
+	assert.equal(answerVw("clamp(2.8rem, 6vw, 4.5rem)", 390), "clamp(2.8rem, 23.4px, 4.5rem)");
+	assert.equal(answerVw("calc(100vw - 2rem)", 390), "calc(390px - 2rem)");
 });

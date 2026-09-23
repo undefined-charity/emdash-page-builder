@@ -13,14 +13,15 @@ import { docToPortableText } from "../convert/from-doc.js";
 import { portableTextToDoc } from "../convert/to-doc.js";
 import type { PTBlock } from "../convert/types.js";
 import { newKey } from "../convert/types.js";
-import type { BuilderConfig } from "../schema/config.js";
+import type { BuilderConfig, SiteSettings } from "../schema/config.js";
 import { builderExtensions } from "../schema/extensions.js";
 import { anyThemeToCss, cleanAnyTheme, cleanTheme, themeToCss, type PageTheme } from "../schema/style.js";
-import { ConflictError, LockedError, createPublishedEntry, fetchSlotPreviews, loadLatest, loadSiteTheme, publishEntry, saveEntry, saveSiteTheme, uploadImage } from "./api.js";
+import { ConflictError, LockedError, createPublishedEntry, fetchSlotPreviews, loadLatest, loadSiteTheme, publishEntry, saveEntry, saveSiteSettings, saveSiteTheme, uploadImage } from "./api.js";
 import { closedSlash, insertItems, slashExtension, type InsertContext, type InsertItem, type SlashState } from "./commands.js";
 import { MediaDialog, mediaToImageAttrs, PromptDialog, ReusableDialog } from "./Dialogs.js";
 import { Inspector } from "./Inspector.js";
 import { withNodeViews, previewStore } from "./nodeviews.js";
+import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
 import { claimIfFree, releaseIfActive, setActive, useIsActive } from "./registry.js";
 import { fieldEdits, usePendingFieldEdits } from "./fields.js";
 import { selectBlock, type BlockRef } from "./structure.js";
@@ -63,6 +64,7 @@ export function PageEditor(props: PageEditorProps) {
 	const [save, setSave] = React.useState<{ state: SaveState; error?: string; holder?: string }>({ state: "loading" });
 	const [theme, setTheme] = React.useState<PageTheme>(() => cleanTheme(props.theme, config.themeTokens) ?? {});
 	const [siteTheme, setSiteTheme] = React.useState<PageTheme>({});
+	const [siteSettings, setSiteSettings] = React.useState<SiteSettings>({});
 	/** Saved changes that aren't live yet. */
 	const [unpublished, setUnpublished] = React.useState(false);
 	const [publishing, setPublishing] = React.useState(false);
@@ -385,7 +387,10 @@ export function PageEditor(props: PageEditorProps) {
 
 	React.useEffect(() => {
 		loadSiteTheme()
-			.then((t) => setSiteTheme(cleanAnyTheme(t) ?? {}))
+			.then((site) => {
+				setSiteTheme(cleanAnyTheme(site.theme) ?? {});
+				setSiteSettings(site.settings);
+			})
 			.catch(() => undefined);
 	}, []);
 
@@ -408,6 +413,14 @@ export function PageEditor(props: PageEditorProps) {
 				.then(() => setSave({ state: dirty.current.body || dirty.current.theme ? "dirty" : "saved" }))
 				.catch((e) => setSave({ state: "error", error: e instanceof Error ? e.message : String(e) }));
 		}, 800);
+	};
+
+	const changeSiteSettings = (next: SiteSettings) => {
+		setSiteSettings(next);
+		setSave({ state: "saving" });
+		saveSiteSettings(next)
+			.then(() => setSave({ state: dirty.current.body || dirty.current.theme ? "dirty" : "saved" }))
+			.catch((e) => setSave({ state: "error", error: e instanceof Error ? e.message : String(e) }));
 	};
 
 	// ── Theme: live preview on the whole page ─────────────────────────────────
@@ -434,18 +447,44 @@ export function PageEditor(props: PageEditorProps) {
 		return () => mq.removeEventListener("change", on);
 	}, []);
 
+	const device = useDevice();
 	React.useEffect(() => {
 		if (!isActive) return;
 		const body = document.body.style;
-		const prev = { paddingTop: body.paddingTop, marginRight: body.marginRight, paddingBottom: body.paddingBottom, transition: body.transition };
+		const keys = ["paddingTop", "marginTop", "marginRight", "marginLeft", "marginBottom", "paddingBottom", "transition", "width", "boxSizing"] as const;
+		const prev = Object.fromEntries(keys.map((k) => [k, body[k]]));
+		const panel = inspectorOpen && !narrow ? 340 : 0;
 		body.transition = "margin-right 160ms ease";
-		body.paddingTop = "52px";
-		body.marginRight = inspectorOpen && !narrow ? "340px" : "0";
+		if (device === "phone") {
+			// A phone-sized page, centred in the space the panel leaves.
+			body.boxSizing = "border-box";
+			body.width = `${PHONE_WIDTH}px`;
+			body.marginTop = "76px";
+			body.marginBottom = "40px";
+			body.marginLeft = `max(24px, calc((100vw - ${panel}px - ${PHONE_WIDTH}px) / 2))`;
+			body.marginRight = "0";
+		} else {
+			body.paddingTop = "52px";
+			body.marginRight = `${panel}px`;
+		}
 		body.paddingBottom = inspectorOpen && narrow ? "45vh" : prev.paddingBottom;
 		return () => {
 			Object.assign(body, prev);
 		};
-	}, [inspectorOpen, narrow, isActive]);
+	}, [inspectorOpen, narrow, isActive, device]);
+
+	// ⌘⌥P (Ctrl+Alt+P) switches between the desktop and phone views.
+	React.useEffect(() => {
+		if (!isActive) return;
+		const onKey = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.altKey && e.code === "KeyP") {
+				e.preventDefault();
+				setDevice(getDevice() === "phone" ? "desktop" : "phone");
+			}
+		};
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
+	}, [isActive]);
 
 	if (!editor) return null;
 
@@ -492,6 +531,8 @@ export function PageEditor(props: PageEditorProps) {
 					}}
 					siteTheme={siteTheme}
 					onSiteTheme={changeSiteTheme}
+					siteSettings={siteSettings}
+					onSiteSettings={changeSiteSettings}
 					pageTab={!props.region && Boolean(props.themeField)}
 					onRefreshPreviews={() => void fetchSlotPreviews(props.rootId).then(previewStore.set).catch(() => undefined)}
 					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}

@@ -82,6 +82,12 @@ export interface BuilderConfig {
 	externalBlocks: ExternalBlock[];
 	/** Collection holding reusable blocks (fields: title, content). */
 	reusableCollection: string;
+	/**
+	 * Screens this wide (px) or narrower are phones: blocks hidden on phones
+	 * disappear and phone-only styles apply. Match your stylesheet's own
+	 * breakpoint.
+	 */
+	phoneBreakpoint: number;
 }
 
 export const DEFAULT_CONFIG: BuilderConfig = {
@@ -96,6 +102,7 @@ export const DEFAULT_CONFIG: BuilderConfig = {
 	],
 	externalBlocks: [],
 	reusableCollection: "reusable_blocks",
+	phoneBreakpoint: 640,
 };
 
 export function resolveConfig(partial?: Partial<BuilderConfig>): BuilderConfig {
@@ -108,7 +115,19 @@ export function resolveConfig(partial?: Partial<BuilderConfig>): BuilderConfig {
 		buttonStyles: partial?.buttonStyles?.length ? partial.buttonStyles : DEFAULT_CONFIG.buttonStyles,
 		externalBlocks: partial?.externalBlocks ?? [],
 		reusableCollection: partial?.reusableCollection ?? DEFAULT_CONFIG.reusableCollection,
+		phoneBreakpoint: partial?.phoneBreakpoint && partial.phoneBreakpoint > 0 ? partial.phoneBreakpoint : DEFAULT_CONFIG.phoneBreakpoint,
 	};
+}
+
+/** Site-wide page options, set on the Site tab. */
+export interface SiteSettings {
+	/** A back-to-top button on every page, shown once the visitor scrolls down. */
+	backToTop?: boolean;
+}
+
+export function cleanSiteSettings(value: unknown): SiteSettings {
+	const v = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+	return { ...(v.backToTop === true ? { backToTop: true } : {}) };
 }
 
 export function findTextStyle(config: BuilderConfig, name: unknown): TextStyle | undefined {

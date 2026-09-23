@@ -8,6 +8,7 @@ import * as React from "react";
 
 import type { BuilderConfig } from "../schema/config.js";
 import type { InsertItem } from "./commands.js";
+import { setDevice, useDevice } from "./device.js";
 import { applyTextStyle } from "./Inspector.js";
 
 export type SaveState = "loading" | "saved" | "dirty" | "saving" | "error" | "conflict" | "locked";
@@ -256,6 +257,7 @@ export function Toolbar({
 			</div>
 
 			<div className="pb-toolbar__end">
+				<DeviceSwitch />
 				<button type="button" className={inspectorOpen ? "on" : ""} onClick={onToggleInspector} title="Show or hide the side panel">
 					⚙ Panel
 				</button>
@@ -269,6 +271,29 @@ export function Toolbar({
 					{publish.busy ? "Publishing…" : publish.unpublished ? "Publish" : "Published ✓"}
 				</button>
 			</div>
+		</div>
+	);
+}
+
+/** Desktop or phone: which screen the page is shown, and styled, for. */
+function DeviceSwitch() {
+	const device = useDevice();
+	const shortcut = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌥⌘P" : "Ctrl+Alt+P";
+	return (
+		<div className="pb-seg pb-device" role="radiogroup" aria-label="Screen">
+			<button type="button" role="radio" aria-checked={device === "desktop"} className={device === "desktop" ? "on" : ""} onClick={() => setDevice("desktop")} title={`Desktop (${shortcut})`}>
+				🖥
+			</button>
+			<button
+				type="button"
+				role="radio"
+				aria-checked={device === "phone"}
+				className={device === "phone" ? "on" : ""}
+				onClick={() => setDevice("phone")}
+				title={`Phone: see and style the page as a phone shows it (${shortcut})`}
+			>
+				📱
+			</button>
 		</div>
 	);
 }

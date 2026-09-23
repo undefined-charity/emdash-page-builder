@@ -8,7 +8,7 @@
  * renderer.
  */
 import { findTextStyle, headingLevelOf, type BuilderConfig } from "../schema/config.js";
-import { cleanBlockStyle, safeColor, safeFont, safeLength } from "../schema/style.js";
+import { cleanBlockStyle, cleanHide, cleanPhoneStyle, safeColor, safeFont, safeLength } from "../schema/style.js";
 import { isTextBlock, newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
 const EMPTY_PARAGRAPH: JSONContent = { type: "paragraph" };
@@ -17,10 +17,23 @@ function arr(value: unknown): PTBlock[] {
 	return Array.isArray(value) ? (value.filter((b) => b && typeof b === "object") as PTBlock[]) : [];
 }
 
-/** `{ pbStyle }` attrs for a block, or nothing — keeps unstyled documents lean. */
-function styleAttr(b: Record<string, unknown> | undefined): { pbStyle?: object } {
+/** `{ pbHide }` for a block hidden on phones or desktops, or nothing. */
+function hideAttr(b: Record<string, unknown> | undefined): { pbHide?: string } {
+	const hide = cleanHide(b?.pbHide);
+	return hide ? { pbHide: hide } : {};
+}
+
+/** Style, phone style and hiding attrs for a block, or nothing — keeps unstyled documents lean. */
+function styleAttr(b: Record<string, unknown> | undefined): { pbStyle?: object; pbStylePhone?: object; pbHide?: string } {
 	const style = cleanBlockStyle(b?.pbStyle);
-	return style ? { pbStyle: style } : {};
+	const phone = cleanPhoneStyle(b?.pbStylePhone);
+	return { ...(style ? { pbStyle: style } : {}), ...(phone ? { pbStylePhone: phone } : {}), ...hideAttr(b) };
+}
+
+/** Lists and quotes are runs of blocks; the first one carries the whole run's style. */
+function withRunStyle(node: JSONContent, first: PTBlock): JSONContent {
+	const attrs = styleAttr(first);
+	return Object.keys(attrs).length ? { ...node, attrs: { ...node.attrs, ...attrs } } : node;
 }
 
 function nonEmpty(nodes: JSONContent[]): JSONContent[] {
@@ -148,8 +161,10 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 	switch (b._type) {
 		case "image":
 			return imageNode(b);
-		case "break":
-			return { type: "horizontalRule" };
+		case "break": {
+			const attrs = hideAttr(b);
+			return Object.keys(attrs).length ? { type: "horizontalRule", attrs } : { type: "horizontalRule" };
+		}
 		case "buttons": {
 			const buttons = Array.isArray(b.buttons) ? (b.buttons as Array<Record<string, unknown>>) : [];
 			return {
@@ -210,12 +225,12 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 			};
 		}
 		case "pb.spacer":
-			return { type: "pbSpacer", attrs: { size: typeof b.size === "string" ? b.size : "m" } };
+			return { type: "pbSpacer", attrs: { size: typeof b.size === "string" ? b.size : "m", ...hideAttr(b) } };
 		case "pb.reusable":
-			return { type: "pbReusable", attrs: { ref: b.ref ?? "", title: b.title ?? "", key: b._key ?? newKey() } };
+			return { type: "pbReusable", attrs: { ref: b.ref ?? "", title: b.title ?? "", key: b._key ?? newKey(), ...hideAttr(b) } };
 		default: {
-			const { _type, _key, ...data } = b;
-			return { type: "pbExternal", attrs: { blockType: _type, key: _key ?? newKey(), data } };
+			const { _type, _key, pbHide, ...data } = b;
+			return { type: "pbExternal", attrs: { blockType: _type, key: _key ?? newKey(), data, ...hideAttr({ pbHide }) } };
 		}
 	}
 }
@@ -236,14 +251,15 @@ export function blocksToNodes(blocks: PTBlock[], config: BuilderConfig): JSONCon
 					i++;
 				} else break;
 			}
-			out.push(listRun(run, type));
+			out.push(withRunStyle(listRun(run, type), run[0]));
 		} else if (isTextBlock(b) && b.style === "blockquote") {
 			const paragraphs: JSONContent[] = [];
+			const first = b;
 			while (i < blocks.length && isTextBlock(blocks[i]) && blocks[i].style === "blockquote" && !(blocks[i] as PTTextBlock).listItem) {
 				const q = blocks[i++] as PTTextBlock;
 				paragraphs.push({ type: "paragraph", content: spansToInline(q.children, q.markDefs) });
 			}
-			out.push({ type: "blockquote", content: paragraphs });
+			out.push(withRunStyle({ type: "blockquote", content: paragraphs }, first));
 		} else if (isTextBlock(b)) {
 			out.push(textBlock(b, config));
 			i++;

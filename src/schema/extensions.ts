@@ -14,7 +14,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 
 import { defaultSectionStyle, findTextStyle, type BuilderConfig } from "./config.js";
-import { blockStyleToCss, cleanBlockStyle } from "./style.js";
+import { blockStyleToCss, cleanBlockStyle, cleanHide, phoneStyleAttrs } from "./style.js";
 
 const noDom = { rendered: false } as const;
 const cls = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
@@ -61,6 +61,9 @@ export const STYLABLE_TYPES = [
 	"pbImage",
 ];
 
+/** Node types that can be hidden on phones or on desktops. */
+export const HIDEABLE_TYPES = [...STYLABLE_TYPES, "horizontalRule", "pbSpacer", "pbExternal", "pbReusable"];
+
 const BlockStyles = Extension.create({
 	name: "pbBlockStyles",
 	addGlobalAttributes() {
@@ -74,6 +77,24 @@ const BlockStyles = Extension.create({
 						renderHTML: (attrs) => {
 							const css = blockStyleToCss(attrs.pbStyle);
 							return css ? { style: css, "data-pb-styled": "" } : {};
+						},
+					},
+					pbStylePhone: {
+						default: null,
+						parseHTML: () => null,
+						renderHTML: (attrs) => phoneStyleAttrs(attrs.pbStylePhone),
+					},
+				},
+			},
+			{
+				types: HIDEABLE_TYPES,
+				attributes: {
+					pbHide: {
+						default: null,
+						parseHTML: () => null,
+						renderHTML: (attrs) => {
+							const hide = cleanHide(attrs.pbHide);
+							return hide ? { class: `pb-hide-${hide}` } : {};
 						},
 					},
 				},

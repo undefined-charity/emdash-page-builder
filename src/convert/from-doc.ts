@@ -3,12 +3,18 @@
  * round-trip (see tests/convert.test.ts).
  */
 import { findTextStyle, type BuilderConfig } from "../schema/config.js";
-import { cleanBlockStyle } from "../schema/style.js";
+import { cleanBlockStyle, cleanHide, cleanPhoneStyle } from "../schema/style.js";
 import { newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
-function styleOf(attrs: Record<string, unknown> | undefined): { pbStyle?: object } {
+function hideOf(attrs: Record<string, unknown> | undefined): { pbHide?: string } {
+	const hide = cleanHide(attrs?.pbHide);
+	return hide ? { pbHide: hide } : {};
+}
+
+function styleOf(attrs: Record<string, unknown> | undefined): { pbStyle?: object; pbStylePhone?: object; pbHide?: string } {
 	const style = cleanBlockStyle(attrs?.pbStyle);
-	return style ? { pbStyle: style } : {};
+	const phone = cleanPhoneStyle(attrs?.pbStylePhone);
+	return { ...(style ? { pbStyle: style } : {}), ...(phone ? { pbStylePhone: phone } : {}), ...hideOf(attrs) };
 }
 
 const MARKS: Record<string, string> = { bold: "strong", italic: "em", underline: "underline", strike: "strike-through" };
@@ -81,13 +87,14 @@ function textBlock(node: JSONContent, config: BuilderConfig, extra: Partial<PTTe
 	};
 }
 
-function listToBlocks(list: JSONContent, level: number, config: BuilderConfig, out: PTBlock[]) {
+/** A list is a run of blocks; each carries the list's style, so it survives however the run is split. */
+function listToBlocks(list: JSONContent, level: number, config: BuilderConfig, out: PTBlock[], runStyle = styleOf(list.attrs)) {
 	const listItem = list.type === "bulletList" ? "bullet" : "number";
 	for (const item of list.content ?? []) {
 		for (const child of item.content ?? []) {
-			if (child.type === "bulletList" || child.type === "orderedList") listToBlocks(child, level + 1, config, out);
+			if (child.type === "bulletList" || child.type === "orderedList") listToBlocks(child, level + 1, config, out, runStyle);
 			else if (child.type === "paragraph" || child.type === "heading")
-				out.push({ ...textBlock(child, config), style: "normal", listItem, level } as PTBlock);
+				out.push({ ...textBlock(child, config), style: "normal", listItem, level, ...runStyle } as PTBlock);
 		}
 	}
 }
@@ -108,10 +115,10 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 			listToBlocks(node, 1, config, out);
 			return;
 		case "blockquote":
-			for (const p of node.content ?? []) out.push({ ...textBlock(p, config), style: "blockquote" } as PTBlock);
+			for (const p of node.content ?? []) out.push({ ...textBlock(p, config), style: "blockquote", ...styleOf(a) } as PTBlock);
 			return;
 		case "horizontalRule":
-			out.push({ _type: "break", _key: newKey(), style: "lineBreak" });
+			out.push({ _type: "break", _key: newKey(), style: "lineBreak", ...hideOf(a) });
 			return;
 		case "pbImage":
 			out.push({
@@ -187,10 +194,10 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 			});
 			return;
 		case "pbSpacer":
-			out.push({ _type: "pb.spacer", _key: newKey(), size: a.size ?? "m" });
+			out.push({ _type: "pb.spacer", _key: newKey(), size: a.size ?? "m", ...hideOf(a) });
 			return;
 		case "pbReusable":
-			out.push({ _type: "pb.reusable", _key: a.key || newKey(), ref: a.ref ?? "", ...(a.title ? { title: a.title } : {}) });
+			out.push({ _type: "pb.reusable", _key: a.key || newKey(), ref: a.ref ?? "", ...(a.title ? { title: a.title } : {}), ...hideOf(a) });
 			return;
 		case "pbExternal": {
 			// EmDash's admin editor adds an empty `id` to blocks it passes through.
@@ -199,7 +206,7 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 			// The admin editor keeps a block it doesn't know only if it has a
 			// setting; one without any would be replaced by placeholder text.
 			if (!Object.keys(data).some((k) => !k.startsWith("_"))) data.pbBlock = true;
-			out.push({ ...data, _type: a.blockType, _key: a.key || newKey() });
+			out.push({ ...data, ...hideOf(a), _type: a.blockType, _key: a.key || newKey() });
 			return;
 		}
 		default:
@@ -219,7 +226,7 @@ export function docToPortableText(doc: JSONContent, config: BuilderConfig): PTBl
 	const blocks = nodesToBlocks(doc.content ?? [], config);
 	const isEmpty = (b: PTBlock | undefined) => {
 		const t = b as PTTextBlock | undefined;
-		return t?._type === "block" && t.style === "normal" && !t.listItem && !t.pbStyle && t.children.every((c) => !c.text);
+		return t?._type === "block" && t.style === "normal" && !t.listItem && !t.pbStyle && !t.pbStylePhone && !t.pbHide && t.children.every((c) => !c.text);
 	};
 	while (blocks.length && isEmpty(blocks[blocks.length - 1])) blocks.pop();
 	return blocks;

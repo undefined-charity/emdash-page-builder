@@ -10,8 +10,9 @@ import type { Extensions } from "@tiptap/core";
 
 import { portableTextToDoc } from "../convert/to-doc.js";
 import type { BuilderConfig } from "../schema/config.js";
-import { blockStyleToCss } from "../schema/style.js";
+import { blockStyleToCss, cleanHide, cleanPhoneStyle, phoneStyleAttrs } from "../schema/style.js";
 import { getEntryField } from "./api.js";
+import { getDevice } from "./device.js";
 import { attachFieldEditing } from "./fields.js";
 import { reactStyle } from "./ui.js";
 
@@ -71,6 +72,12 @@ export interface ViewContext {
 
 const cls = (...p: Array<string | false | null | undefined>) => p.filter(Boolean).join(" ");
 
+/** The hide-on-a-screen class a node's own `renderHTML` would add. */
+const hideClass = (attrs: Record<string, unknown>) => {
+	const hide = cleanHide(attrs.pbHide);
+	return hide ? `pb-hide-${hide}` : undefined;
+};
+
 // ── Image ─────────────────────────────────────────────────────────────────────
 
 function ImageView({ node, updateAttributes, selected, getPos, editor }: NodeViewProps) {
@@ -96,20 +103,25 @@ function ImageView({ node, updateAttributes, selected, getPos, editor }: NodeVie
 			window.removeEventListener("pointermove", move);
 			window.removeEventListener("pointerup", up);
 			setDragWidth(null);
-			updateAttributes({ displayWidth: Math.round(latest) });
+			// In the phone view, resizing sets the phone's width only.
+			if (getDevice() === "phone") updateAttributes({ pbStylePhone: cleanPhoneStyle({ ...(a.pbStylePhone ?? {}), width: `${Math.round(latest)}px` }) ?? null });
+			else updateAttributes({ displayWidth: Math.round(latest) });
 		};
 		window.addEventListener("pointermove", move);
 		window.addEventListener("pointerup", up);
 	};
 
-	const style = [blockStyleToCss(a.pbStyle), width && a.align !== "wide" ? `width: ${Math.round(width)}px` : ""].filter(Boolean).join("; ");
+	// Dragging in the phone view shows the phone's width as it changes.
+	const phone = phoneStyleAttrs(dragWidth !== null && getDevice() === "phone" ? { ...a.pbStylePhone, width: `${Math.round(dragWidth)}px` } : a.pbStylePhone);
+	const style = [blockStyleToCss(a.pbStyle), width && a.align !== "wide" ? `width: ${Math.round(width)}px` : "", phone.style].filter(Boolean).join("; ");
 
 	return (
 		<NodeViewWrapper
 			as="figure"
 			ref={figure}
-			className={cls("pb-image", `pb-image--${a.align || "none"}`, "pb-ed-image", selected && "pb-ed-selected")}
+			className={cls("pb-image", `pb-image--${a.align || "none"}`, "pb-ed-image", hideClass(a), selected && "pb-ed-selected")}
 			style={reactStyle(style)}
+			data-pb-phone={phone["data-pb-phone"]}
 			data-drag-handle
 			onClick={() => typeof getPos === "function" && editor.commands.setNodeSelection(getPos()!)}
 		>
@@ -151,7 +163,7 @@ function makeExternalView(ctx: ViewContext) {
 		const preview = React.useRef<HTMLDivElement>(null);
 		useLivePreviewParts(preview, html);
 		return (
-			<NodeViewWrapper className={cls("pb-ed-atom", selected && "pb-ed-selected")} data-drag-handle>
+			<NodeViewWrapper className={cls("pb-ed-atom", hideClass(node.attrs), selected && "pb-ed-selected")} data-drag-handle>
 				<div className="pb-ed-atom__label" contentEditable={false}>
 					{def?.icon ?? "◆"} {def?.label ?? node.attrs.blockType}
 				</div>
@@ -191,7 +203,7 @@ function makeReusableView(ctx: ViewContext) {
 		};
 
 		return (
-			<NodeViewWrapper className={cls("pb-ed-atom", "pb-ed-atom--reusable", selected && "pb-ed-selected")} data-drag-handle>
+			<NodeViewWrapper className={cls("pb-ed-atom", "pb-ed-atom--reusable", hideClass(node.attrs), selected && "pb-ed-selected")} data-drag-handle>
 				<div className="pb-ed-atom__label" contentEditable={false}>
 					♻ {title}
 					<span className="pb-ed-atom__actions">
@@ -226,8 +238,11 @@ function accordionItemView({ node }: { node: { type: unknown; attrs: Record<stri
 	const dom = document.createElement("details");
 	dom.open = true;
 	const apply = (attrs: Record<string, unknown>) => {
-		dom.className = "pb-accordion__item pb-ed-accordion-item";
-		dom.setAttribute("style", blockStyleToCss(attrs.pbStyle) ?? "");
+		dom.className = cls("pb-accordion__item", "pb-ed-accordion-item", hideClass(attrs));
+		const phone = phoneStyleAttrs(attrs.pbStylePhone);
+		dom.setAttribute("style", [blockStyleToCss(attrs.pbStyle), phone.style].filter(Boolean).join("; "));
+		if (phone["data-pb-phone"]) dom.setAttribute("data-pb-phone", phone["data-pb-phone"]);
+		else dom.removeAttribute("data-pb-phone");
 	};
 	apply(node.attrs);
 	// Clicking the question places the caret; it mustn't collapse the answer.
@@ -250,7 +265,7 @@ function accordionItemView({ node }: { node: { type: unknown; attrs: Record<stri
 
 function SpacerView({ node, selected }: NodeViewProps) {
 	return (
-		<NodeViewWrapper className={cls("pb-spacer", `pb-spacer--${node.attrs.size}`, "pb-ed-spacer", selected && "pb-ed-selected")} data-drag-handle>
+		<NodeViewWrapper className={cls("pb-spacer", `pb-spacer--${node.attrs.size}`, "pb-ed-spacer", hideClass(node.attrs), selected && "pb-ed-selected")} data-drag-handle>
 			<span contentEditable={false}>spacer</span>
 		</NodeViewWrapper>
 	);

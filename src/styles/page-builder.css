@@ -115,3 +115,45 @@
 :where(.pb-doc) [style*="text-align: center"] {
 	text-align: center;
 }
+
+/* Back-to-top button (Site tab). A plain link: `#` scrolls to the top with no
+   script. Where the browser supports scroll-driven animations it fades in
+   once the page has scrolled, so short pages never show it. */
+:where(.pb-back-to-top) {
+	position: fixed;
+	right: max(1rem, env(safe-area-inset-right));
+	bottom: max(1rem, env(safe-area-inset-bottom));
+	z-index: 50;
+	display: grid;
+	place-items: center;
+	width: 2.75rem;
+	height: 2.75rem;
+	border-radius: 999px;
+	color: var(--pb-back-to-top-color, #fff);
+	background: var(--pb-back-to-top-bg, rgb(0 0 0 / 0.6));
+	box-shadow: 0 4px 16px rgb(0 0 0 / 0.3);
+	text-decoration: none;
+}
+@supports (animation-timeline: scroll()) {
+	:where(.pb-back-to-top) {
+		opacity: 0;
+		visibility: hidden;
+		animation: pb-back-to-top linear both;
+		animation-timeline: scroll(root);
+		animation-range: 40vh 70vh;
+	}
+}
+@keyframes pb-back-to-top {
+	to {
+		opacity: 1;
+		visibility: visible;
+	}
+}
+html:has(.pb-back-to-top) {
+	scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+	html:has(.pb-back-to-top) {
+		scroll-behavior: auto;
+	}
+}

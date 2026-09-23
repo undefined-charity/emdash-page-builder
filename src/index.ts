@@ -24,13 +24,14 @@ import type { PluginDescriptor, ResolvedPlugin, RouteContext } from "emdash";
 import { definePlugin } from "emdash";
 import { z } from "zod";
 
+import { cleanSiteSettings } from "./schema/config.js";
 import { cleanAnyTheme } from "./schema/style.js";
 
-export type { BuilderConfig, ExternalBlock, ExternalField, SectionStyle, TextStyle, ButtonStyle } from "./schema/config.js";
+export type { BuilderConfig, ExternalBlock, ExternalField, SectionStyle, TextStyle, ButtonStyle, SiteSettings } from "./schema/config.js";
 export type { ThemeToken, BlockStyle, PageTheme } from "./schema/style.js";
 
 const ID = "page-builder";
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const ADMIN_PAGES = [{ path: "/", label: "Page Builder", icon: "layout" }];
 
 export interface PageBuilderOptions {
@@ -62,18 +63,29 @@ export function pageBuilder(options: PageBuilderOptions = {}): PluginDescriptor 
 	};
 }
 
-/** The site-wide design defaults every page inherits (KV `state:siteTheme`). */
+/**
+ * The site-wide design defaults every page inherits (KV `state:siteTheme`),
+ * and site-wide page options such as the back-to-top button
+ * (KV `state:siteSettings`).
+ */
 const SITE_THEME_KEY = "state:siteTheme";
-const themeInput = z.object({ theme: z.record(z.string(), z.string()) });
+const SITE_SETTINGS_KEY = "state:siteSettings";
+const themeInput = z.object({
+	theme: z.record(z.string(), z.string()).optional(),
+	settings: z.record(z.string(), z.unknown()).optional(),
+});
 
 async function getSiteTheme(ctx: RouteContext) {
-	return { theme: cleanAnyTheme(await ctx.kv.get(SITE_THEME_KEY)) ?? {} };
+	return {
+		theme: cleanAnyTheme(await ctx.kv.get(SITE_THEME_KEY)) ?? {},
+		settings: cleanSiteSettings(await ctx.kv.get(SITE_SETTINGS_KEY)),
+	};
 }
 
 async function saveSiteTheme(ctx: RouteContext<z.infer<typeof themeInput>>) {
-	const theme = cleanAnyTheme(ctx.input.theme) ?? {};
-	await ctx.kv.set(SITE_THEME_KEY, theme);
-	return { theme };
+	if (ctx.input.theme) await ctx.kv.set(SITE_THEME_KEY, cleanAnyTheme(ctx.input.theme) ?? {});
+	if (ctx.input.settings) await ctx.kv.set(SITE_SETTINGS_KEY, cleanSiteSettings(ctx.input.settings));
+	return getSiteTheme(ctx as RouteContext);
 }
 
 export function createPlugin(): ResolvedPlugin {

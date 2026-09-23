@@ -3,6 +3,8 @@
  * (same session cookie as the admin; `X-EmDash-Request` satisfies CSRF).
  */
 
+import { cleanSiteSettings, type SiteSettings } from "../schema/config.js";
+
 const API = "/_emdash/api";
 
 /** The entry changed since this editor loaded it (another tab, another person). */
@@ -221,9 +223,13 @@ export async function loadOptions(url: string): Promise<Array<{ label: string; v
 
 const PLUGIN = `${API}/plugins/page-builder`;
 
-export async function loadSiteTheme(): Promise<Record<string, string>> {
-	const data = await request<{ theme?: Record<string, string> }>(`${PLUGIN}/site-theme`);
-	return data.theme ?? {};
+export async function loadSiteTheme(): Promise<{ theme: Record<string, string>; settings: SiteSettings }> {
+	const data = await request<{ theme?: Record<string, string>; settings?: unknown }>(`${PLUGIN}/site-theme`);
+	return { theme: data.theme ?? {}, settings: cleanSiteSettings(data.settings) };
+}
+
+export async function saveSiteSettings(settings: SiteSettings): Promise<void> {
+	await request(`${PLUGIN}/site-theme-save`, { method: "POST", body: JSON.stringify({ settings }) });
 }
 
 export async function saveSiteTheme(theme: Record<string, string>): Promise<void> {

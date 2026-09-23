@@ -100,6 +100,101 @@ export function blockStyleToCss(value: unknown): string | undefined {
 	return rules.join("; ");
 }
 
+// ── Phones ────────────────────────────────────────────────────────────────────
+
+/** Hide a block on one kind of screen. */
+export type HideOn = "phone" | "desktop";
+
+export function cleanHide(v: unknown): HideOn | undefined {
+	return v === "phone" || v === "desktop" ? v : undefined;
+}
+
+/**
+ * Phone-only overrides: the block style, plus text alignment and (for images)
+ * width and position. Applied below the site's phone breakpoint, over the
+ * block's own style.
+ */
+export interface PhoneStyle extends BlockStyle {
+	textAlign?: "left" | "center" | "right" | "justify";
+	/** Image width. */
+	width?: string;
+	/** Image position. */
+	align?: "none" | "left" | "right" | "center" | "wide";
+}
+
+const TEXT_ALIGNS = ["left", "center", "right", "justify"] as const;
+const IMAGE_ALIGNS = ["none", "left", "right", "center", "wide"] as const;
+
+export function cleanPhoneStyle(value: unknown): PhoneStyle | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	const v = value as Record<string, unknown>;
+	const out: PhoneStyle = { ...cleanBlockStyle(v) };
+	if (TEXT_ALIGNS.includes(v.textAlign as never)) out.textAlign = v.textAlign as PhoneStyle["textAlign"];
+	const width = safeLength(v.width);
+	if (width) out.width = width;
+	if (IMAGE_ALIGNS.includes(v.align as never)) out.align = v.align as PhoneStyle["align"];
+	return Object.keys(out).length ? out : undefined;
+}
+
+/**
+ * Phone overrides go on the element as custom properties plus a list of the
+ * ones set (`data-pb-phone="fontSize padding"`); `responsiveCss` applies them
+ * below the breakpoint. No per-block selector needed, so nothing depends on
+ * block keys, which change on every save.
+ */
+export function phoneStyleAttrs(value: unknown): { style?: string; "data-pb-phone"?: string } {
+	const s = cleanPhoneStyle(value);
+	if (!s) return {};
+	const vars: string[] = [];
+	const names: string[] = [];
+	for (const [k, raw] of Object.entries(s) as Array<[keyof PhoneStyle, string]>) {
+		if (k === "align") {
+			names.push(`align-${raw}`);
+			continue;
+		}
+		names.push(k);
+		vars.push(`--pbp-${k}: ${k === "backgroundImage" ? `url("${raw}")` : raw}`);
+	}
+	return { ...(vars.length ? { style: vars.join("; ") } : {}), "data-pb-phone": names.join(" ") };
+}
+
+const PHONE_RULES: Array<[string, string]> = [
+	["color", "color: var(--pbp-color) !important; --pb-text: var(--pbp-color)"],
+	["background", "background-color: var(--pbp-background) !important"],
+	["backgroundImage", "background-image: var(--pbp-backgroundImage) !important; background-size: cover; background-position: center"],
+	["padding", "padding: var(--pbp-padding) !important"],
+	["radius", "border-radius: var(--pbp-radius) !important"],
+	["maxWidth", "max-width: var(--pbp-maxWidth) !important; margin-inline: auto"],
+	["minHeight", "min-height: var(--pbp-minHeight) !important"],
+	["fontSize", "font-size: var(--pbp-fontSize) !important"],
+	["fontFamily", "font-family: var(--pbp-fontFamily) !important"],
+	["borderColor", "border-color: var(--pbp-borderColor) !important"],
+	["textAlign", "text-align: var(--pbp-textAlign) !important"],
+	["width", "width: var(--pbp-width) !important; max-width: 100% !important"],
+	["align-none", "float: none !important; margin-inline: 0 !important"],
+	["align-center", "float: none !important; margin-inline: auto !important"],
+	["align-wide", "float: none !important; width: 100% !important; max-width: 100% !important; margin-inline: 0 !important"],
+	["align-left", "float: left !important; max-width: 50% !important; margin: 0.25rem 1.25rem 1rem 0 !important"],
+	["align-right", "float: right !important; max-width: 50% !important; margin: 0.25rem 0 1rem 1.25rem !important"],
+];
+
+/**
+ * The rules that make phones different: blocks hidden on one kind of screen,
+ * and phone-only style overrides. Generated because the breakpoint is a site
+ * setting, and a stylesheet can't read one in a media query.
+ *
+ * Hidden blocks stay visible in the editor (`.pb-editor-content`), dimmed.
+ */
+export function responsiveCss(breakpoint: number): string {
+	const bp = Number.isFinite(breakpoint) && breakpoint > 0 ? breakpoint : 640;
+	const live = ":not(.pb-editor-content *)";
+	const phone = PHONE_RULES.map(([name, css]) => `[data-pb-phone~="${name}"] { ${css} }`).join(" ");
+	return (
+		`@media (max-width: ${bp}px) { .pb-hide-phone${live} { display: none !important; } ${phone} } ` +
+		`@media (min-width: ${bp + 0.02}px) { .pb-hide-desktop${live} { display: none !important; } }`
+	);
+}
+
 // ── Page theme ────────────────────────────────────────────────────────────────
 
 /** A CSS custom property the site exposes for per-page overrides. */

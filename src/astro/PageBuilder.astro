@@ -16,8 +16,9 @@ import { PortableText } from "emdash/ui";
 
 import { renderDocument } from "../render/html.js";
 import { resolveConfig, type BuilderConfig } from "../schema/config.js";
-import { themeToCss } from "../schema/style.js";
+import { responsiveCss, themeToCss } from "../schema/style.js";
 import EditorIsland from "../editor/EditorIsland.tsx";
+import { loadSite } from "./site.js";
 import "../styles/page-builder.css";
 
 interface Props {
@@ -68,6 +69,9 @@ for (const slot of slots) {
 }
 
 const themeCss = nested || region || embedded ? undefined : themeToCss(theme, config.themeTokens);
+// The page's own document (not a header, footer or embedded one) carries the page-wide extras.
+const pageDoc = !nested && !region && !embedded;
+const backToTop = pageDoc && (await loadSite(Astro)).settings.backToTop;
 const rootId = entry ? `pb-${entry.collection}-${entry.id}-${entry.field ?? "body"}` : undefined;
 const Self = Astro.self;
 const islandProps =
@@ -89,6 +93,7 @@ const islandProps =
 ---
 
 {themeCss && <style set:html={themeCss} data-pb-theme />}
+{!nested && <style set:html={responsiveCss(config.phoneBreakpoint)} data-pb-responsive />}
 <div
 	class:list={["pb-doc", className]}
 	data-pb-root={rootId}
@@ -105,11 +110,19 @@ const islandProps =
 					<div class="pb-slot" data-pb-slot={slot.key}>
 						<PortableText value={[slot.block]} components={{ type: components }} />
 					</div>
+				) : slot.hide ? (
+					<div class={`pb-hide-${slot.hide}`}>
+						<PortableText value={[slot.block]} components={{ type: components }} />
+					</div>
 				) : (
 					<PortableText value={[slot.block]} components={{ type: components }} />
 				))}
 				{slot?.kind === "reusable" && (editing ? (
 					<div class="pb-slot" data-pb-slot={slot.key}>
+						{shared && <Self value={shared.content} config={partial} components={components} nested />}
+					</div>
+				) : slot.hide ? (
+					<div class={`pb-hide-${slot.hide}`}>
 						{shared && <Self value={shared.content} config={partial} components={components} nested />}
 					</div>
 				) : (
@@ -119,5 +132,11 @@ const islandProps =
 		);
 	})}
 </div>
+
+{backToTop && (
+	<a href="#" class="pb-back-to-top" aria-label="Back to top" title="Back to top">
+		<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5l-7 7m7-7l7 7M12 5v14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" /></svg>
+	</a>
+)}
 
 {islandProps && !embedded && <EditorIsland client:only="react" {...islandProps} />}

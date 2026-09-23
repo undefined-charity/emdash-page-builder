@@ -226,3 +226,27 @@
 .pb-ed-atom__preview .pb-ed-field--error {
 	outline: 2px solid #ff5d5d;
 }
+
+/* Phone view (device.ts): the page at phone width, framed, on the editor's
+   own backdrop. The body's width and position are set inline by the editor. */
+html[data-pb-phone-view] {
+	background: #26262d !important;
+}
+html[data-pb-phone-view] body {
+	background: var(--pb-phone-bg) !important;
+	min-height: 100vh;
+	overflow-x: clip;
+	box-shadow:
+		0 0 0 1px #3b3b46,
+		0 0 0 10px #1c1c21,
+		0 24px 70px rgb(0 0 0 / 0.55);
+	border-radius: 2px;
+}
+
+/* Blocks hidden on the screen being edited stay visible, dimmed. */
+html[data-pb-phone-view] .pb-editor-content .pb-hide-phone,
+html:not([data-pb-phone-view]) .pb-editor-content .pb-hide-desktop {
+	opacity: 0.4;
+	outline: 1px dashed #ffc857 !important;
+	outline-offset: 2px;
+}
