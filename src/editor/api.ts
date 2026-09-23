@@ -401,3 +401,57 @@ export async function deleteMenuItem(menu: string, id: string): Promise<void> {
 export async function reorderMenu(menu: string, items: Array<{ id: string; parentId: string | null; sortOrder: number }>): Promise<void> {
 	await request(`${API}/menus/${encodeURIComponent(menu)}/reorder`, { method: "POST", body: JSON.stringify({ items }) });
 }
+
+// ── Version history ───────────────────────────────────────────────────────────
+
+export interface Revision {
+	id: string;
+	authorId: string | null;
+	createdAt: string;
+}
+
+/** An entry's saved versions, newest first (EmDash keeps the latest 50). */
+export async function listRevisions(collection: string, id: string): Promise<Revision[]> {
+	const data = await request<{ items?: Array<Record<string, unknown>> }>(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}/revisions?limit=100`);
+	return (data.items ?? []).map((r) => ({ id: String(r.id), authorId: (r.authorId as string | null) ?? null, createdAt: String(r.createdAt) }));
+}
+
+/** Make a version the entry's draft again. Publishing is still a separate step. */
+export async function restoreRevision(revisionId: string): Promise<void> {
+	await request(`${API}/revisions/${encodeURIComponent(revisionId)}/restore`, { method: "POST", body: "{}" });
+}
+
+/** The live and draft revision ids of an entry. */
+export async function entryRevisions(collection: string, id: string): Promise<{ live: string | null; draft: string | null }> {
+	const got = await request<{ item?: { liveRevisionId?: string | null; draftRevisionId?: string | null } }>(`${API}/content/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`);
+	return { live: got.item?.liveRevisionId ?? null, draft: got.item?.draftRevisionId ?? null };
+}
+
+export interface VersionMark {
+	name?: string;
+	starred?: boolean;
+	published?: string;
+}
+
+export async function getVersionMarks(collection: string, id: string): Promise<Record<string, VersionMark>> {
+	const data = await request<{ marks?: Record<string, VersionMark> }>(`${PLUGIN}/history-get`, { method: "POST", body: JSON.stringify({ entry: `${collection}:${id}` }) });
+	return data.marks ?? {};
+}
+
+export async function markVersion(collection: string, id: string, revisionId: string, patch: { name?: string | null; starred?: boolean; published?: boolean }): Promise<Record<string, VersionMark>> {
+	const data = await request<{ marks?: Record<string, VersionMark> }>(`${PLUGIN}/history-mark`, { method: "POST", body: JSON.stringify({ entry: `${collection}:${id}`, revisionId, ...patch }) });
+	return data.marks ?? {};
+}
+
+/** People's names by user id, where this user may see them (and who "you" are). */
+export async function userNames(): Promise<{ me: string | null; names: Record<string, string> }> {
+	const me = await request<{ id?: string; name?: string | null; email?: string }>(`${API}/auth/me`).catch(() => null);
+	const names: Record<string, string> = {};
+	try {
+		const data = await request<{ items?: Array<{ id: string; name?: string | null; email?: string }> }>(`${API}/users?limit=100`);
+		for (const u of data.items ?? []) names[u.id] = u.name || u.email || "Someone";
+	} catch {
+		/* not allowed to list users: names stay unknown */
+	}
+	return { me: me?.id ?? null, names };
+}

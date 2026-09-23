@@ -16,7 +16,7 @@ import { newKey } from "../convert/types.js";
 import type { BuilderConfig, SiteSettings } from "../schema/config.js";
 import { builderExtensions } from "../schema/extensions.js";
 import { anyThemeToCss, cleanAnyTheme, cleanTheme, themeToCss, type PageTheme } from "../schema/style.js";
-import { ConflictError, LockedError, type EntrySummary, createPublishedEntry, fetchSlotPreviews, loadLatest, loadSiteTheme, publishEntry, saveEntry, saveSiteSettings, saveSiteTheme, uploadImage } from "./api.js";
+import { ConflictError, LockedError, type EntrySummary, entryRevisions, markVersion, createPublishedEntry, fetchSlotPreviews, loadLatest, loadSiteTheme, publishEntry, saveEntry, saveSiteSettings, saveSiteTheme, uploadImage } from "./api.js";
 import { closedSlash, insertItems, slashExtension, type InsertContext, type InsertItem, type SlashState } from "./commands.js";
 import { MediaDialog, mediaToImageAttrs, PagesDialog, PromptDialog, ReusableDialog } from "./Dialogs.js";
 import { showPageBackground } from "./BackgroundPanel.js";
@@ -24,6 +24,7 @@ import { BACKGROUND_KEY, cleanPageBackground, type PageBackground } from "../sch
 import { Inspector } from "./Inspector.js";
 import { PreviewOverlay } from "./Preview.js";
 import { PagesPanel, type PageMeta } from "./Pages.js";
+import { HistoryPanel } from "./History.js";
 import { sitePalette } from "./SitePanel.js";
 import { withNodeViews, previewStore } from "./nodeviews.js";
 import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
@@ -90,6 +91,7 @@ export function PageEditor(props: PageEditorProps) {
 	const [publishing, setPublishing] = React.useState(false);
 	const [previewing, setPreviewing] = React.useState(false);
 	const [pagesOpen, setPagesOpen] = React.useState(false);
+	const [historyOpen, setHistoryOpen] = React.useState(false);
 	const pendingFields = usePendingFieldEdits();
 	const siteThemeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [slash, setSlashState] = React.useState<SlashState>(closedSlash);
@@ -370,6 +372,10 @@ export function PageEditor(props: PageEditorProps) {
 			if (hold.current) return;
 			await publishEntry(props.collection, props.entryId);
 			fieldEdits.published(props.collection, props.entryId);
+			// History marks the version that went live (EmDash only keeps the current one).
+			void entryRevisions(props.collection, props.entryId)
+				.then(({ live }) => (live ? markVersion(props.collection, props.entryId, live, { published: true }) : undefined))
+				.catch(() => undefined);
 			// Fields of other entries edited on this page go live with it.
 			for (const other of fieldEdits.list()) {
 				await publishEntry(other.collection, other.id);
@@ -638,6 +644,7 @@ export function PageEditor(props: PageEditorProps) {
 				onToggleInspector={() => setInspectorOpen((o) => !o)}
 				onPreview={() => void openPreview()}
 				onPages={() => setPagesOpen(true)}
+				onHistory={() => setHistoryOpen(true)}
 			/>
 			{inspectorOpen && (
 				<Inspector
@@ -678,6 +685,20 @@ export function PageEditor(props: PageEditorProps) {
 					onOtherChanged={(page) => fieldEdits.add(page)}
 					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}
 					onClose={() => setPagesOpen(false)}
+				/>
+			)}
+			{historyOpen && (
+				<HistoryPanel
+					collection={props.collection}
+					entryId={props.entryId}
+					title={props.region ? `${props.region} (every page)` : props.title || "This page"}
+					beforeRestore={async () => {
+						if (timer.current) clearTimeout(timer.current);
+						await flush();
+						// The restore replaces the draft; this editor reloads it.
+						dirty.current = { body: false, theme: false };
+					}}
+					onClose={() => setHistoryOpen(false)}
 				/>
 			)}
 			{previewing && <PreviewOverlay device={device} onClose={() => setPreviewing(false)} />}

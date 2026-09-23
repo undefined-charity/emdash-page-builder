@@ -48,15 +48,29 @@ interface Props {
 	class?: string;
 }
 
-const { value, entry, config: partial, components = {}, theme, nested = false, region, embedded = false, class: className } = Astro.props;
+const { entry, config: partial, components = {}, nested = false, region, embedded = false, class: className } = Astro.props;
+let { value, theme } = Astro.props;
 const config = resolveConfig(partial);
-const { parts, slots } = renderDocument(value, config);
 
 const EDITOR_ROLE = 30;
 const role = (Astro.locals as { user?: { role?: number } }).user?.role ?? 0;
 // `?pb-preview`: the editor's Preview. Edit mode serves every entry's latest
 // draft; this renders them as a visitor sees them, with no editor.
 const previewing = Astro.url.searchParams.has("pb-preview");
+// `?pb-preview&pb-revision=<id>`: an earlier version of this document, from
+// the editor's History (editors only).
+const revisionId = previewing ? Astro.url.searchParams.get("pb-revision") : null;
+if (revisionId && entry && !nested && role >= EDITOR_ROLE) {
+	const emdash = (Astro.locals as { emdash?: { handleRevisionGet?: (id: string) => Promise<{ success: boolean; data?: { item?: { collection: string; entryId: string; data: Record<string, unknown> } } }> } }).emdash;
+	const rev = await emdash?.handleRevisionGet?.(revisionId).catch(() => null);
+	const item = rev?.success ? rev.data?.item : undefined;
+	if (item && item.collection === entry.collection && item.entryId === entry.id) {
+		value = item.data[entry.field ?? "body"];
+		const themeField = entry.themeField === null ? null : (entry.themeField ?? "theme");
+		if (themeField) theme = item.data[themeField];
+	}
+}
+const { parts, slots } = renderDocument(value, config);
 const editing = !nested && !previewing && Boolean(entry) && role >= EDITOR_ROLE && Boolean(getRequestContext()?.editMode);
 
 // Reusable blocks are entries in their own collection; fetch each once.

@@ -39,6 +39,7 @@ export function Toolbar({
 	onToggleInspector,
 	onPreview,
 	onPages,
+	onHistory,
 }: {
 	editor: Editor;
 	config: BuilderConfig;
@@ -54,6 +55,7 @@ export function Toolbar({
 	onToggleInspector: () => void;
 	onPreview: () => void;
 	onPages: () => void;
+	onHistory: () => void;
 }) {
 	const s = useEditorState({
 		editor,
@@ -265,6 +267,9 @@ export function Toolbar({
 			<div className="pb-toolbar__end">
 				<button type="button" onClick={onPages} title="The site's pages: add, open, rename, menus, unpublish">
 					📄 Pages
+				</button>
+				<button type="button" onClick={onHistory} title="Earlier versions of what you're editing: see, compare and restore them">
+					🕘 History
 				</button>
 				<DeviceSwitch />
 				<button type="button" onClick={onPreview} title="See the page as visitors will, with your unpublished changes and without the editor">

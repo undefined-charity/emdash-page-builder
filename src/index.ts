@@ -32,7 +32,7 @@ export type { ThemeToken, ThemeRole, BlockStyle, PageTheme } from "./schema/styl
 export type { ThemePreset } from "./schema/presets.js";
 
 const ID = "page-builder";
-const VERSION = "0.9.0";
+const VERSION = "0.10.0";
 const ADMIN_PAGES = [{ path: "/", label: "Page Builder", icon: "layout" }];
 
 export interface PageBuilderOptions {
@@ -89,6 +89,52 @@ async function saveSiteTheme(ctx: RouteContext<z.infer<typeof themeInput>>) {
 	return getSiteTheme(ctx as RouteContext);
 }
 
+/**
+ * What EmDash's revisions don't record: which were published (and when), and
+ * the names and stars editors give versions. Kept per entry (KV
+ * `history:<collection>:<id>`), keyed by revision id.
+ */
+export interface VersionMark {
+	name?: string;
+	starred?: boolean;
+	/** When it was published (ISO). */
+	published?: string;
+}
+
+const entryKey = z.string().regex(/^[a-z0-9_-]{1,64}:[A-Za-z0-9_-]{1,64}$/);
+const historyInput = z.object({ entry: entryKey });
+const markInput = z.object({
+	entry: entryKey,
+	revisionId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+	name: z.string().max(80).nullable().optional(),
+	starred: z.boolean().optional(),
+	published: z.boolean().optional(),
+});
+
+async function getHistory(ctx: RouteContext<z.infer<typeof historyInput>>) {
+	return { marks: ((await ctx.kv.get(`history:${ctx.input.entry}`)) ?? {}) as Record<string, VersionMark> };
+}
+
+async function markVersion(ctx: RouteContext<z.infer<typeof markInput>>) {
+	const { entry, revisionId, name, starred, published } = ctx.input;
+	const key = `history:${entry}`;
+	const marks = { ...(((await ctx.kv.get(key)) ?? {}) as Record<string, VersionMark>) };
+	const mark: VersionMark = { ...marks[revisionId] };
+	if (name !== undefined) {
+		if (name?.trim()) mark.name = name.trim();
+		else delete mark.name;
+	}
+	if (starred !== undefined) {
+		if (starred) mark.starred = true;
+		else delete mark.starred;
+	}
+	if (published) mark.published = new Date().toISOString();
+	if (Object.keys(mark).length) marks[revisionId] = mark;
+	else delete marks[revisionId];
+	await ctx.kv.set(key, marks);
+	return { marks };
+}
+
 export function createPlugin(): ResolvedPlugin {
 	return definePlugin({
 		id: ID,
@@ -98,6 +144,9 @@ export function createPlugin(): ResolvedPlugin {
 			// Public: every page renders the site's design defaults.
 			"site-theme": { public: true, handler: getSiteTheme as never },
 			"site-theme-save": { input: themeInput, handler: saveSiteTheme as never },
+			// Editors only (not public): version names, stars and publish times.
+			"history-get": { input: historyInput, handler: getHistory as never },
+			"history-mark": { input: markInput, handler: markVersion as never },
 		},
 		admin: { pages: ADMIN_PAGES },
 	});
