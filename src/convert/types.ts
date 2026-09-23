@@ -59,6 +59,8 @@ export const BUILDER_TYPES = new Set([
 	"pb.cards",
 	"pb.accordion",
 	"pb.stack",
+	"pb.video",
+	"pb.gallery",
 	"pb.spacer",
 	"pb.reusable",
 ]);

@@ -52,7 +52,7 @@ export interface PageEditorProps {
 const AUTOSAVE_MS = 1200;
 
 type Dialog =
-	| { kind: "media"; onPick: (attrs: Record<string, unknown>) => void }
+	| { kind: "media"; accept?: "image" | "video"; onPick: (attrs: Record<string, unknown>) => void; onPickMany?: (list: Array<Record<string, unknown>>) => void }
 	| { kind: "reusable" }
 	| { kind: "saveReusable"; block: BlockRef }
 	| null;
@@ -101,7 +101,8 @@ export function PageEditor(props: PageEditorProps) {
 
 	const ctx: InsertContext = {
 		config,
-		openMedia: (onPick) => setDialog({ kind: "media", onPick }),
+		openMedia: (onPick, accept) => setDialog({ kind: "media", onPick, accept }),
+		openMediaMany: (onPickMany) => setDialog({ kind: "media", onPick: () => undefined, onPickMany }),
 		openReusable: () => setDialog({ kind: "reusable" }),
 	};
 	const ctxRef = React.useRef(ctx);
@@ -547,6 +548,8 @@ export function PageEditor(props: PageEditorProps) {
 					pageTab={!props.region && Boolean(props.themeField)}
 					onRefreshPreviews={() => void fetchSlotPreviews(props.rootId).then(previewStore.set).catch(() => undefined)}
 					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}
+					onPickVideo={(onPick) => setDialog({ kind: "media", accept: "video", onPick })}
+					onPickImages={(onPickMany) => setDialog({ kind: "media", onPick: () => undefined, onPickMany })}
 					onSaveReusable={(block) => setDialog({ kind: "saveReusable", block })}
 					onClose={() => setInspectorOpen(false)}
 				/>
@@ -570,11 +573,19 @@ export function PageEditor(props: PageEditorProps) {
 			)}
 			{dialog?.kind === "media" && (
 				<MediaDialog
+					kind={dialog.accept}
 					onClose={() => setDialog(null)}
 					onPick={(item) => {
 						setDialog(null);
 						dialog.onPick(mediaToImageAttrs(item));
 					}}
+					onPickMany={
+						dialog.onPickMany &&
+						((list) => {
+							setDialog(null);
+							dialog.onPickMany?.(list.map(mediaToImageAttrs));
+						})
+					}
 				/>
 			)}
 			{dialog?.kind === "reusable" && (

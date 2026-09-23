@@ -4,6 +4,7 @@
  */
 import { Extension, type Editor, type Range } from "@tiptap/core";
 import type { JSONContent } from "@tiptap/core";
+import { NodeSelection } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionProps } from "@tiptap/suggestion";
 
 import { newKey } from "../convert/types.js";
@@ -12,7 +13,8 @@ import { defaultSectionStyle } from "../schema/config.js";
 
 export interface InsertContext {
 	config: BuilderConfig;
-	openMedia: (onPick: (image: JSONContent["attrs"]) => void) => void;
+	openMedia: (onPick: (media: JSONContent["attrs"]) => void, accept?: "image" | "video") => void;
+	openMediaMany: (onPick: (images: Array<Record<string, unknown>>) => void) => void;
 	openReusable: () => void;
 }
 
@@ -29,8 +31,25 @@ export interface InsertItem {
 const p = (text = ""): JSONContent => (text ? { type: "paragraph", content: [{ type: "text", text }] } : { type: "paragraph" });
 const h = (level: number, text: string): JSONContent => ({ type: "heading", attrs: { level }, content: [{ type: "text", text }] });
 
+/** Insert a block at the cursor, or after the selected block (never replacing it). */
 function insertBlock(editor: Editor, node: JSONContent) {
-	editor.chain().focus().insertContent(node).run();
+	const { selection } = editor.state;
+	if (selection instanceof NodeSelection) editor.chain().focus().insertContentAt(selection.to, node).run();
+	else editor.chain().focus().insertContent(node).run();
+}
+
+/** Insert a block and select it, so the side panel shows its settings. */
+function insertAndSelect(editor: Editor, node: JSONContent) {
+	const { selection } = editor.state;
+	if (selection instanceof NodeSelection) {
+		const at = selection.to;
+		editor.chain().focus().insertContentAt(at, node).setNodeSelection(at).run();
+		return;
+	}
+	insertBlock(editor, node);
+	const { $from } = editor.state.selection;
+	const before = $from.nodeBefore;
+	if (before && before.type.name === node.type) editor.commands.setNodeSelection($from.pos - before.nodeSize);
 }
 
 export function externalNode(block: ExternalBlock): JSONContent {
@@ -120,6 +139,30 @@ export function insertItems(config: BuilderConfig): InsertItem[] {
 			icon: "⇥",
 			keywords: ["float", "wrap", "photo"],
 			run: (e, ctx) => ctx.openMedia((attrs) => insertBlock(e, { type: "pbImage", attrs: { ...attrs, align: "right", displayWidth: 320 } })),
+		},
+		{
+			id: "video",
+			label: "Video",
+			category: "Media",
+			icon: "▶",
+			description: "A YouTube or Vimeo link, or an uploaded video",
+			keywords: ["youtube", "vimeo", "movie", "clip", "film", "mp4"],
+			run: (e) => insertAndSelect(e, { type: "pbVideo", attrs: { src: "" } }),
+		},
+		{
+			id: "gallery",
+			label: "Gallery or slideshow",
+			category: "Media",
+			icon: "▦",
+			description: "Several images as a grid, a masonry wall or a swipeable slideshow",
+			keywords: ["photos", "images", "carousel", "slider", "lightbox", "masonry", "grid"],
+			run: (e, ctx) =>
+				ctx.openMediaMany((images) =>
+					insertAndSelect(e, {
+						type: "pbGallery",
+						attrs: { images: images.map((i) => ({ src: i.src, mediaId: i.mediaId, alt: i.alt, width: i.width, height: i.height })), layout: "grid", columns: 3, key: newKey() },
+					}),
+				),
 		},
 		{
 			id: "section",

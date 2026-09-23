@@ -3,6 +3,7 @@
  * round-trip (see tests/convert.test.ts).
  */
 import { findTextStyle, type BuilderConfig } from "../schema/config.js";
+import { cleanGalleryImages } from "../schema/media.js";
 import { cleanBlockStyle, cleanHide, cleanPhoneStyle } from "../schema/style.js";
 import { newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
@@ -191,6 +192,32 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 						...styleOf(item.attrs),
 					};
 				}),
+			});
+			return;
+		case "pbVideo":
+			out.push({
+				_type: "pb.video",
+				_key: newKey(),
+				url: a.src ?? "",
+				...(a.mediaId ? { mediaId: a.mediaId } : {}),
+				...(a.poster ? { poster: a.poster } : {}),
+				...(a.title ? { title: a.title } : {}),
+				...(a.caption ? { caption: a.caption } : {}),
+				...(a.autoplay ? { autoplay: true } : {}),
+				...(a.loop ? { loop: true } : {}),
+				...(a.controls === false ? { controls: false } : {}),
+				...styleOf(a),
+			});
+			return;
+		case "pbGallery":
+			out.push({
+				_type: "pb.gallery",
+				_key: a.key || newKey(),
+				images: cleanGalleryImages(a.images).map((img) => ({ _key: newKey(), ...img })),
+				...(a.layout && a.layout !== "grid" ? { layout: a.layout } : {}),
+				...(typeof a.columns === "number" && a.columns !== 3 ? { columns: a.columns } : {}),
+				...(a.lightbox === false ? { lightbox: false } : {}),
+				...styleOf(a),
 			});
 			return;
 		case "pbStack":

@@ -31,7 +31,7 @@ export type { BuilderConfig, ExternalBlock, ExternalField, SectionStyle, TextSty
 export type { ThemeToken, BlockStyle, PageTheme } from "./schema/style.js";
 
 const ID = "page-builder";
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 const ADMIN_PAGES = [{ path: "/", label: "Page Builder", icon: "layout" }];
 
 export interface PageBuilderOptions {

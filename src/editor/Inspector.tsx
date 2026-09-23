@@ -9,6 +9,7 @@ import * as React from "react";
 import type { BuilderConfig, ExternalBlock, ExternalField, SiteSettings } from "../schema/config.js";
 import { HIDEABLE_TYPES, SPACER_SIZES, STYLABLE_TYPES } from "../schema/extensions.js";
 import { cleanBlockStyle, cleanHide, cleanPhoneStyle, type BlockStyle, type PageTheme, type PhoneStyle } from "../schema/style.js";
+import { cleanGalleryImages, videoSource, type GalleryImage } from "../schema/media.js";
 import { useDevice } from "./device.js";
 import { loadOptions } from "./api.js";
 import { MenuEditor } from "./MenuEditor.js";
@@ -39,6 +40,8 @@ export interface InspectorProps {
 	siteSettings: SiteSettings;
 	onSiteSettings: (settings: SiteSettings) => void;
 	onPickImage: (onPick: (attrs: Record<string, unknown>) => void) => void;
+	onPickVideo: (onPick: (attrs: Record<string, unknown>) => void) => void;
+	onPickImages: (onPick: (list: Array<Record<string, unknown>>) => void) => void;
 	onSaveReusable: (ref: BlockRef) => void;
 	onClose: () => void;
 	/** False for site regions, which have no page of their own to design. */
@@ -149,7 +152,7 @@ export function Inspector(props: InspectorProps) {
 
 // ── Block settings ────────────────────────────────────────────────────────────
 
-function BlockPanel({ editor, config, block, onPickImage, onSaveReusable, onRefreshPreviews }: InspectorProps & { block: BlockRef }) {
+function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickImages, onSaveReusable, onRefreshPreviews }: InspectorProps & { block: BlockRef }) {
 	const live = refresh(editor, block) ?? block;
 	const node = live.node;
 	const a = node.attrs as Record<string, unknown>;
@@ -424,6 +427,45 @@ function BlockPanel({ editor, config, block, onPickImage, onSaveReusable, onRefr
 				</Group>
 			)}
 
+			{type === "pbVideo" && (
+				<Group title="Video">
+					<Field label="YouTube or Vimeo link" hint="Paste the video's address, or use a video uploaded to the media library.">
+						<TextInput value={videoSource(a.src)?.kind === "file" ? "" : String(a.src ?? "")} placeholder="https://youtu.be/…" lazy onChange={(src) => set({ src: src.trim(), mediaId: null })} />
+					</Field>
+					<button type="button" onClick={() => onPickVideo((v) => set({ src: v.src, mediaId: v.mediaId }))}>
+						{videoSource(a.src)?.kind === "file" ? "Replace uploaded video…" : "Use an uploaded video…"}
+					</button>
+					{Boolean(a.src) && !videoSource(a.src) && <p className="pb-error">That doesn't look like a YouTube, Vimeo or video file address.</p>}
+					<Toggle checked={a.autoplay === true} onChange={(autoplay) => set({ autoplay })} label="Play by itself (muted)" />
+					<Toggle checked={a.loop === true} onChange={(loop) => set({ loop })} label="Loop" />
+					<Toggle checked={a.controls !== false} onChange={(controls) => set({ controls })} label="Show play controls" />
+					{videoSource(a.src)?.kind === "file" && (
+						<div className="pb-field">
+							<span className="pb-field__label">
+								Poster image
+								{Boolean(a.poster) && (
+									<button type="button" className="pb-link" onClick={() => set({ poster: "" })}>
+										remove
+									</button>
+								)}
+							</span>
+							<button type="button" onClick={() => onPickImage((img) => set({ poster: img.src }))}>
+								{a.poster ? "Change poster…" : "Choose a poster…"}
+							</button>
+							<span className="pb-field__hint">Shown before it plays.</span>
+						</div>
+					)}
+					<Field label="Title" hint="Describes the video for screen readers.">
+						<TextInput value={String(a.title ?? "")} lazy onChange={(title) => set({ title })} />
+					</Field>
+					<Field label="Caption">
+						<TextInput value={String(a.caption ?? "")} lazy onChange={(caption) => set({ caption })} />
+					</Field>
+				</Group>
+			)}
+
+			{type === "pbGallery" && <GallerySettings value={a} set={set} onPickImages={onPickImages} />}
+
 			{type === "pbSpacer" && (
 				<Group title="Spacer">
 					<Segmented value={String(a.size ?? "m")} onChange={(size) => set({ size })} options={SPACER_SIZES.map((s) => ({ label: s.toUpperCase(), value: s }))} />
@@ -590,6 +632,76 @@ function ExternalFieldInput({ field, value, onChange }: { field: ExternalField; 
 				onChange={(v) => onChange(field.type === "number" ? (v === "" ? null : Number(v)) : v)}
 			/>
 		</Field>
+	);
+}
+
+// ── Gallery ───────────────────────────────────────────────────────────────────
+
+function GallerySettings({
+	value,
+	set,
+	onPickImages,
+}: {
+	value: Record<string, unknown>;
+	set: (patch: Record<string, unknown>) => void;
+	onPickImages: InspectorProps["onPickImages"];
+}) {
+	const images = cleanGalleryImages(value.images);
+	const layout = String(value.layout ?? "grid");
+	const put = (next: GalleryImage[]) => set({ images: next });
+	const moveImage = (i: number, dir: -1 | 1) => {
+		const next = images.slice();
+		const [img] = next.splice(i, 1);
+		next.splice(i + dir, 0, img);
+		put(next);
+	};
+	return (
+		<Group title={`Gallery (${images.length} image${images.length === 1 ? "" : "s"})`}>
+			<Field label="Layout">
+				<Segmented
+					value={layout}
+					onChange={(v) => set({ layout: v })}
+					options={[
+						{ label: "Grid", value: "grid" },
+						{ label: "Masonry", value: "masonry", title: "Columns of images at their own heights" },
+						{ label: "Slideshow", value: "slideshow", title: "One at a time: swipe, scroll or use the arrows" },
+					]}
+				/>
+			</Field>
+			{layout !== "slideshow" && (
+				<Field label="Columns" hint="Phones show at most two.">
+					<Segmented value={String(value.columns ?? 3)} onChange={(v) => set({ columns: Number(v) })} options={["2", "3", "4", "5"].map((v) => ({ label: v, value: v }))} />
+				</Field>
+			)}
+			<Toggle checked={value.lightbox !== false} onChange={(lightbox) => set({ lightbox })} label="Click an image to see it full screen" />
+			<div className="pb-gallery-edit">
+				{images.map((img, i) => (
+					<div key={`${img.src}-${i}`} className="pb-gallery-edit__item">
+						<img src={img.src} alt="" />
+						<div className="pb-gallery-edit__tools">
+							<button type="button" title="Earlier" disabled={i === 0} onClick={() => moveImage(i, -1)}>
+								←
+							</button>
+							<button type="button" title="Later" disabled={i === images.length - 1} onClick={() => moveImage(i, 1)}>
+								→
+							</button>
+							<button type="button" title="Remove" className="danger" onClick={() => put(images.filter((_, j) => j !== i))}>
+								✕
+							</button>
+						</div>
+						<TextInput value={img.alt ?? ""} placeholder="Alt text" lazy onChange={(alt) => put(images.map((m, j) => (j === i ? { ...m, alt } : m)))} />
+					</div>
+				))}
+			</div>
+			<button
+				type="button"
+				onClick={() =>
+					onPickImages((list) => put([...images, ...cleanGalleryImages(list.map((l) => ({ src: l.src, mediaId: l.mediaId, alt: l.alt, width: l.width, height: l.height })))]))
+				}
+			>
+				+ Add images…
+			</button>
+		</Group>
 	);
 }
 

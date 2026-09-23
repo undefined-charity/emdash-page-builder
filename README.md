@@ -12,6 +12,8 @@ Content is stored as ordinary Portable Text in the entry's rich-text field, so t
 - **`/` to insert**, the same list on the ribbon's **+ Insert** and the **+** beside every block:
   - Text: paragraphs, headings, lists, quotes, and the site's own named styles
   - Media: images from the media library or uploaded straight from the computer (dropped or pasted onto the page, too) — inline, centred, full-width, or floated left/right with text wrapping; drag the edges to resize
+  - Video: a YouTube or Vimeo link, or an uploaded video, optionally playing by itself (muted), looping, or without controls
+  - Gallery or slideshow: several images as a grid, a masonry wall, or a slideshow people swipe or scroll through (with arrows and dots where the browser supports them). Clicking an image shows it full screen. None of it needs JavaScript.
   - Layout: sections, 2–4 columns, cards, FAQ/accordions, buttons, dividers, spacers, and layers (blocks on top of each other, such as a headline over a photo)
   - Site blocks: anything the site renders itself — forms, a next-event panel, a ticket widget, a menu — shown as a live preview and configured in the side panel
   - Reusable blocks: save any block as shared; edit it once, it changes everywhere; detach a copy to edit it on one page only
@@ -167,6 +169,8 @@ An external block is any Portable Text type your site renders — the builder ke
 | `pb.columns` | `{ ratio, columns: [{ content: Block[] }] }` |
 | `pb.cards` | `{ cards: [{ content: Block[] }] }` |
 | `pb.accordion` | `{ items: [{ summary, content: Block[], open }] }` |
+| `pb.video` | `{ url, mediaId?, poster?, title?, caption?, autoplay?, loop?, controls? }` |
+| `pb.gallery` | `{ layout?: "grid" \| "masonry" \| "slideshow", columns?, lightbox?, images: [{ src, mediaId?, alt?, caption?, width?, height? }] }` |
 | `pb.stack` | `{ phoneFlow?, layers: [{ valign?, halign?, content: Block[] }] }`, back to front |
 | `pb.spacer` | `{ size: "s" \| "m" \| "l" \| "xl" }` |
 | `pb.reusable` | `{ ref }` — an entry in the reusable-blocks collection |

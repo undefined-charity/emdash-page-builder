@@ -18,7 +18,25 @@ function rememberedFolder(): string {
 	}
 }
 
-export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => void; onClose: () => void }) {
+export function MediaDialog({
+	onPick,
+	onClose,
+	kind = "image",
+	onPickMany,
+}: {
+	onPick: (item: MediaItem) => void;
+	onClose: () => void;
+	/** Images (the default) or videos. */
+	kind?: "image" | "video";
+	/** Pick several: clicking selects, and a button adds them all. */
+	onPickMany?: (items: MediaItem[]) => void;
+}) {
+	const [picked, setPicked] = React.useState<MediaItem[]>([]);
+	const choose = (item: MediaItem) => {
+		if (!onPickMany) return onPick(item);
+		setPicked((prev) => (prev.some((p) => p.id === item.id) ? prev.filter((p) => p.id !== item.id) : [...prev, item]));
+	};
+	const noun = kind === "video" ? "video" : "image";
 	const [items, setItems] = React.useState<MediaItem[]>([]);
 	const [cursor, setCursor] = React.useState<string | undefined>();
 	const [loading, setLoading] = React.useState(true);
@@ -52,7 +70,7 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 		async (next?: string) => {
 			setLoading(true);
 			try {
-				const page = await listImages(next, { folderId: scope, search });
+				const page = await listImages(next, { folderId: scope, search, kind });
 				setItems((prev) => (next ? [...prev, ...page.items] : page.items));
 				setCursor(page.nextCursor);
 			} catch (e) {
@@ -61,7 +79,7 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 				setLoading(false);
 			}
 		},
-		[scope, search],
+		[scope, search, kind],
 	);
 	React.useEffect(() => {
 		if (folders === undefined) return;
@@ -79,7 +97,7 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 	};
 
 	const upload = async (files: FileList | File[]) => {
-		const list = [...files].filter((f) => f.type.startsWith("image/"));
+		const list = [...files].filter((f) => f.type.startsWith(`${kind}/`));
 		if (!list.length) return;
 		setError(null);
 		setUploading((n) => n + list.length);
@@ -88,6 +106,7 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 			try {
 				last = await uploadImage(file, folder || undefined);
 				setItems((prev) => [last!, ...prev]);
+				if (onPickMany) setPicked((prev) => [...prev, last!]);
 			} catch (e) {
 				setError(`${file.name}: ${e instanceof Error ? e.message : e}`);
 			} finally {
@@ -95,13 +114,13 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 			}
 		}
 		// One file uploaded: use it straight away, like dropping it on the page.
-		if (list.length === 1 && last) onPick(last);
+		if (list.length === 1 && last && !onPickMany) onPick(last);
 	};
 
 	const folderName = folder === "unfiled" ? "the main library" : folders?.find((f) => f.id === folder)?.name ?? "the media library";
 
 	return (
-		<Modal title="Choose an image" onClose={onClose} wide>
+		<Modal title={onPickMany ? "Choose images" : `Choose ${kind === "video" ? "a video" : "an image"}`} onClose={onClose} wide>
 			<div
 				className="pb-media"
 				onDragOver={(e) => e.preventDefault()}
@@ -114,7 +133,7 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 					<button type="button" className="primary" onClick={() => fileInput.current?.click()}>
 						⤒ Upload from this computer
 					</button>
-					<input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
+					<input ref={fileInput} type="file" accept={`${kind}/*`} multiple hidden onChange={(e) => e.target.files && upload(e.target.files)} />
 					{folders && (
 						<select value={folder} onChange={(e) => chooseFolder(e.target.value)} aria-label="Folder" disabled={!!search}>
 							<option value="unfiled">Main library</option>
@@ -129,23 +148,38 @@ export function MediaDialog({ onPick, onClose }: { onPick: (item: MediaItem) => 
 					<input type="search" placeholder="Search the whole media library" value={query} onChange={(e) => setQuery(e.target.value)} />
 				</div>
 				<p className="pb-hint">
-					{search ? `Results for “${search}” from every folder.` : `Uploads go to ${folderName}. You can also drop image files here.`}
+					{search ? `Results for “${search}” from every folder.` : `Uploads go to ${folderName}. You can also drop ${noun} files here.`}
+					{onPickMany && " Click images to select them, in the order you want."}
 				</p>
 				{uploading > 0 && <p className="pb-hint">Uploading {uploading}…</p>}
 				{error && <p className="pb-error">{error}</p>}
 				<div className="pb-media__grid">
-					{items.map((item) => (
-						<button key={item.id} type="button" className="pb-media__item" onClick={() => onPick(item)} title={item.filename}>
-							<img src={item.url} alt={item.alt} loading="lazy" />
-						</button>
-					))}
+					{items.map((item) => {
+						const n = picked.findIndex((p) => p.id === item.id);
+						return (
+							<button key={item.id} type="button" className={`pb-media__item${n >= 0 ? " on" : ""}`} onClick={() => choose(item)} title={item.filename}>
+								{kind === "video" ? <video src={item.url} preload="metadata" muted /> : <img src={item.url} alt={item.alt} loading="lazy" />}
+								{n >= 0 && <span className="pb-media__badge">{n + 1}</span>}
+							</button>
+						);
+					})}
 				</div>
 				{loading && <p className="pb-hint">Loading…</p>}
-				{!loading && items.length === 0 && <p className="pb-empty">{search ? "Nothing matches that search." : "No images here yet — upload one."}</p>}
+				{!loading && items.length === 0 && <p className="pb-empty">{search ? "Nothing matches that search." : `No ${noun}s here yet — upload one.`}</p>}
 				{cursor && !loading && (
 					<button type="button" onClick={() => load(cursor)}>
 						Load more
 					</button>
+				)}
+				{onPickMany && (
+					<div className="pb-row pb-row--end pb-media__done">
+						<button type="button" onClick={onClose}>
+							Cancel
+						</button>
+						<button type="button" className="primary" disabled={!picked.length} onClick={() => onPickMany(picked)}>
+							Add {picked.length || ""} {picked.length === 1 ? "image" : "images"}
+						</button>
+					</div>
 				)}
 			</div>
 		</Modal>

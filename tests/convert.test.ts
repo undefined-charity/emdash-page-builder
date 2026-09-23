@@ -229,3 +229,45 @@ test("layers round-trip and render in one grid cell, front layer last", () => {
 	assert.match(html, /<div [^>]*class="pb-stack pb-stack--phone-flow"/);
 	assert.match(html, /class="pb-layer pb-layer--v-center pb-layer--h-center"/);
 });
+
+test("videos: YouTube, Vimeo and files round-trip and render without JavaScript", () => {
+	const blocks = [
+		{ _type: "pb.video", _key: "a", url: "https://youtu.be/dQw4w9WgXcQ", autoplay: true, loop: true },
+		{ _type: "pb.video", _key: "b", url: "https://vimeo.com/76979871", controls: false, caption: "Teaser" },
+		{ _type: "pb.video", _key: "c", url: "/_emdash/api/media/file/x.mp4", mediaId: "m1", poster: "/_emdash/api/media/file/p.jpg" },
+	];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(normalize(once), normalize(blocks));
+	const html = renderDocument(blocks, config).parts.join("");
+	assert.match(html, /src="https:\/\/www\.youtube-nocookie\.com\/embed\/dQw4w9WgXcQ\?rel=0&amp;playsinline=1&amp;autoplay=1&amp;mute=1&amp;loop=1&amp;playlist=dQw4w9WgXcQ"/);
+	assert.match(html, /player\.vimeo\.com\/video\/76979871\?dnt=1&amp;controls=0/);
+	assert.match(html, /<video src="\/_emdash\/api\/media\/file\/x\.mp4" poster="\/_emdash\/api\/media\/file\/p\.jpg" controls="" playsinline="" preload="metadata"><a href="\/_emdash\/api\/media\/file\/x\.mp4">Download the video<\/a><\/video>/);
+});
+
+test("a hostile video address renders nothing playable", () => {
+	const html = renderDocument([{ _type: "pb.video", url: "javascript:alert(1)" }], config).parts.join("");
+	assert.ok(!html.includes("javascript"), html);
+	assert.match(html, /pb-video__frame--empty/);
+});
+
+test("galleries round-trip, keep their key, and open images in popovers", () => {
+	const blocks = [
+		{
+			_type: "pb.gallery",
+			_key: "gal1",
+			layout: "slideshow",
+			images: [
+				{ _key: "i1", src: "/a.jpg", mediaId: "m1", alt: "A" },
+				{ _key: "i2", src: "/b.jpg", caption: "Bee" },
+			],
+		},
+	];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(normalize(once), normalize(blocks));
+	assert.equal(once[0]._key, "gal1");
+	const html = renderDocument(blocks, config).parts.join("");
+	assert.match(html, /class="pb-gallery pb-gallery--slideshow"/);
+	assert.match(html, /popovertarget="pb-lb-gal1-0"/);
+	assert.match(html, /<div id="pb-lb-gal1-1" popover="" class="pb-lightbox">/);
+	assert.match(html, /<figcaption>Bee<\/figcaption>/);
+});

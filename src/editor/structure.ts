@@ -34,6 +34,8 @@ const LABELS: Record<string, string> = {
 	pbAccordionBody: "Answer",
 	pbSpacer: "Spacer",
 	pbStack: "Layers",
+	pbVideo: "Video",
+	pbGallery: "Gallery",
 	pbLayer: "Layer",
 	pbReusable: "Reusable block",
 	pbExternal: "Site block",

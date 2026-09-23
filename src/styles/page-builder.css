@@ -194,3 +194,201 @@ html:has(.pb-back-to-top) {
 :where(.pb-layer > .pb-image:only-child) {
 	margin: 0;
 }
+
+/* Video */
+:where(.pb-video) {
+	margin: 1rem 0;
+}
+:where(.pb-video__frame) {
+	border-radius: inherit;
+	overflow: hidden;
+}
+:where(.pb-video--embed .pb-video__frame) {
+	aspect-ratio: 16 / 9;
+}
+:where(.pb-video__frame :is(iframe, video)) {
+	display: block;
+	width: 100%;
+	height: 100%;
+	border: 0;
+}
+:where(.pb-video__frame video) {
+	height: auto;
+}
+:where(.pb-video figcaption) {
+	font-size: 0.875em;
+	opacity: 0.8;
+	margin-top: 0.4rem;
+}
+
+/* Gallery */
+:where(.pb-gallery) {
+	--pb-gallery-gap: 0.75rem;
+	margin-block: 1rem;
+}
+:where(.pb-gallery__item) {
+	margin: 0;
+	min-width: 0;
+}
+:where(.pb-gallery__item img) {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: inherit;
+}
+:where(.pb-gallery__item figcaption) {
+	font-size: 0.875em;
+	opacity: 0.8;
+	margin-top: 0.35rem;
+}
+:where(.pb-gallery__open) {
+	all: unset;
+	display: block;
+	width: 100%;
+	cursor: zoom-in;
+	border-radius: inherit;
+}
+:where(.pb-gallery__open:focus-visible) {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+:where(.pb-gallery--grid) {
+	display: grid;
+	gap: var(--pb-gallery-gap);
+	grid-template-columns: repeat(var(--pb-gallery-cols, 3), minmax(0, 1fr));
+}
+:where(.pb-gallery--grid .pb-gallery__item img) {
+	aspect-ratio: 1;
+}
+:where(.pb-gallery--masonry) {
+	columns: var(--pb-gallery-cols, 3);
+	column-gap: var(--pb-gallery-gap);
+}
+:where(.pb-gallery--masonry .pb-gallery__item) {
+	break-inside: avoid;
+	margin-bottom: var(--pb-gallery-gap);
+}
+:where(.pb-gallery--masonry .pb-gallery__item img) {
+	height: auto;
+}
+@media (max-width: 640px) {
+	:where(.pb-gallery--grid) {
+		grid-template-columns: repeat(min(var(--pb-gallery-cols, 3), 2), minmax(0, 1fr));
+	}
+	:where(.pb-gallery--masonry) {
+		columns: min(var(--pb-gallery-cols, 3), 2);
+	}
+}
+
+/* Slideshow: swipe, scroll or use the arrows; one image at a time. */
+:where(.pb-gallery--slideshow) {
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 100%;
+	gap: var(--pb-gallery-gap);
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+	scroll-snap-type: x mandatory;
+	scrollbar-width: none;
+	/* Each slideshow anchors its own arrows. */
+	anchor-name: --pb-slideshow;
+	anchor-scope: --pb-slideshow;
+	scroll-marker-group: after;
+}
+:where(.pb-gallery--slideshow .pb-gallery__item) {
+	scroll-snap-align: center;
+}
+:where(.pb-gallery--slideshow .pb-gallery__item img) {
+	aspect-ratio: 16 / 9;
+	object-fit: contain;
+	background: rgb(0 0 0 / 0.25);
+}
+/* Arrows and dots where the browser can draw them (scroll buttons and markers). */
+.pb-gallery--slideshow::scroll-button(*) {
+	position: absolute;
+	position-anchor: --pb-slideshow;
+	width: 2.5rem;
+	height: 2.5rem;
+	border: 0;
+	border-radius: 999px;
+	background: rgb(0 0 0 / 0.55);
+	color: #fff;
+	font-size: 1.25rem;
+	cursor: pointer;
+}
+.pb-gallery--slideshow::scroll-button(*):disabled {
+	opacity: 0.3;
+	cursor: default;
+}
+.pb-gallery--slideshow::scroll-button(left) {
+	content: "‹" / "Previous";
+	position-area: left center;
+	translate: calc(100% + 0.75rem) 0;
+}
+.pb-gallery--slideshow::scroll-button(right) {
+	content: "›" / "Next";
+	position-area: right center;
+	translate: calc(-100% - 0.75rem) 0;
+}
+.pb-gallery--slideshow::scroll-marker-group {
+	display: flex;
+	justify-content: center;
+	gap: 0.5rem;
+	margin-top: 0.6rem;
+}
+.pb-gallery--slideshow .pb-gallery__item::scroll-marker {
+	content: "";
+	width: 0.6rem;
+	height: 0.6rem;
+	border-radius: 999px;
+	background: currentColor;
+	opacity: 0.35;
+}
+.pb-gallery--slideshow .pb-gallery__item::scroll-marker:target-current {
+	opacity: 1;
+}
+
+/* Full-screen viewer (a popover: no JavaScript). */
+:where(.pb-lightbox) {
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	max-width: none;
+	max-height: none;
+	margin: 0;
+	padding: 3rem 1rem 1rem;
+	border: 0;
+	background: rgb(0 0 0 / 0.92);
+	color: #fff;
+	box-sizing: border-box;
+}
+:where(.pb-lightbox:popover-open) {
+	display: grid;
+	grid-template-rows: minmax(0, 1fr) auto;
+	place-items: center;
+	gap: 0.75rem;
+}
+:where(.pb-lightbox img) {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
+}
+:where(.pb-lightbox__caption) {
+	margin: 0;
+	text-align: center;
+}
+:where(.pb-lightbox__close) {
+	position: absolute;
+	top: 0.75rem;
+	right: 0.75rem;
+	width: 2.5rem;
+	height: 2.5rem;
+	border: 0;
+	border-radius: 999px;
+	background: rgb(255 255 255 / 0.15);
+	color: #fff;
+	font-size: 1.5rem;
+	line-height: 1;
+	cursor: pointer;
+}

@@ -14,6 +14,7 @@ import type { Node as PMNode } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 
 import { defaultSectionStyle, findTextStyle, type BuilderConfig } from "./config.js";
+import { GALLERY_LAYOUTS, galleryDom, videoDom, videoSource } from "./media.js";
 import { blockStyleToCss, cleanBlockStyle, cleanHide, phoneStyleAttrs } from "./style.js";
 
 const noDom = { rendered: false } as const;
@@ -61,6 +62,8 @@ export const STYLABLE_TYPES = [
 	"pbImage",
 	"pbStack",
 	"pbLayer",
+	"pbVideo",
+	"pbGallery",
 ];
 
 /** Node types that can be hidden on phones or on desktops. */
@@ -394,6 +397,64 @@ const Layer = Node.create({
 	},
 });
 
+/** A video: YouTube or Vimeo by address, or an uploaded file. */
+const Video = Node.create({
+	name: "pbVideo",
+	group: "block",
+	atom: true,
+	draggable: true,
+	addAttributes() {
+		return {
+			src: { default: "", ...noDom },
+			mediaId: { default: null, ...noDom },
+			poster: { default: "", ...noDom },
+			title: { default: "", ...noDom },
+			caption: { default: "", ...noDom },
+			autoplay: { default: false, ...noDom },
+			loop: { default: false, ...noDom },
+			controls: { default: true, ...noDom },
+		};
+	},
+	parseHTML: () => [{ tag: "figure.pb-video" }],
+	renderHTML({ node, HTMLAttributes }) {
+		const player = videoDom(node.attrs);
+		const embed = videoSource(node.attrs.src)?.kind !== "file";
+		return [
+			"figure",
+			mergeAttributes(HTMLAttributes, { class: cls("pb-video", embed && "pb-video--embed") }),
+			player ? ["div", { class: "pb-video__frame" }, player] : ["div", { class: "pb-video__frame pb-video__frame--empty" }],
+			...(node.attrs.caption ? [["figcaption", {}, node.attrs.caption]] : []),
+		] as never;
+	},
+});
+
+/** Several images: a grid, a masonry wall, or a swipeable slideshow, each opening full-screen. */
+const Gallery = Node.create({
+	name: "pbGallery",
+	group: "block",
+	atom: true,
+	draggable: true,
+	addAttributes() {
+		return {
+			images: { default: [], ...noDom },
+			layout: { default: "grid", ...noDom },
+			columns: { default: 3, ...noDom },
+			lightbox: { default: true, ...noDom },
+			key: { default: "", ...noDom },
+		};
+	},
+	parseHTML: () => [{ tag: "div.pb-gallery" }],
+	renderHTML({ node, HTMLAttributes }) {
+		const layout = GALLERY_LAYOUTS.includes(node.attrs.layout) ? node.attrs.layout : "grid";
+		const cols = Math.min(6, Math.max(1, Number(node.attrs.columns) || 3));
+		return [
+			"div",
+			mergeAttributes(HTMLAttributes, { class: cls("pb-gallery", `pb-gallery--${layout}`), style: `--pb-gallery-cols: ${cols}` }),
+			...galleryDom(node.attrs, String(node.attrs.key || "g")),
+		] as never;
+	},
+});
+
 export const SPACER_SIZES = ["s", "m", "l", "xl"] as const;
 
 const Spacer = Node.create({
@@ -469,6 +530,8 @@ export function builderExtensions(config: BuilderConfig): Extensions {
 		AccordionBody,
 		Stack,
 		Layer,
+		Video,
+		Gallery,
 		Spacer,
 		Reusable,
 		External,

@@ -154,6 +154,37 @@
 	opacity: 0.5;
 }
 
+/* Videos and galleries are pictures while editing: a click selects the block. */
+.pb-editor-content :is(.pb-video__frame, .pb-gallery) > *,
+.pb-editor-content .pb-gallery__open {
+	pointer-events: none;
+}
+.pb-editor-content :is(.pb-video, .pb-gallery) {
+	cursor: pointer;
+}
+.pb-editor-content .pb-video__frame--empty {
+	aspect-ratio: 16 / 9;
+	display: grid;
+	place-items: center;
+	border: 1px dashed currentColor;
+	opacity: 0.6;
+}
+.pb-editor-content .pb-video__frame--empty::before {
+	content: "Video: paste a YouTube or Vimeo link, or choose an uploaded video, in the side panel";
+	font: 13px/1.4 system-ui, sans-serif;
+	padding: 1rem;
+	text-align: center;
+}
+.pb-editor-content .pb-gallery:not(:has(.pb-gallery__item))::before {
+	content: "Gallery: add images in the side panel";
+	display: block;
+	padding: 2rem;
+	border: 1px dashed currentColor;
+	opacity: 0.6;
+	font: 13px/1.4 system-ui, sans-serif;
+	text-align: center;
+}
+
 /* Accordion items stay open while editing. */
 .pb-ed-accordion-item > summary {
 	cursor: text;

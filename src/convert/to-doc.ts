@@ -8,6 +8,7 @@
  * renderer.
  */
 import { findTextStyle, headingLevelOf, type BuilderConfig } from "../schema/config.js";
+import { cleanGalleryImages } from "../schema/media.js";
 import { cleanBlockStyle, cleanHide, cleanPhoneStyle, safeColor, safeFont, safeLength } from "../schema/style.js";
 import { isTextBlock, newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
@@ -224,6 +225,33 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 				})),
 			};
 		}
+		case "pb.video":
+			return {
+				type: "pbVideo",
+				attrs: {
+					src: typeof b.url === "string" ? b.url : "",
+					mediaId: typeof b.mediaId === "string" ? b.mediaId : null,
+					poster: typeof b.poster === "string" ? b.poster : "",
+					title: typeof b.title === "string" ? b.title : "",
+					caption: typeof b.caption === "string" ? b.caption : "",
+					autoplay: b.autoplay === true,
+					loop: b.loop === true,
+					controls: b.controls !== false,
+					...styleAttr(b),
+				},
+			};
+		case "pb.gallery":
+			return {
+				type: "pbGallery",
+				attrs: {
+					images: cleanGalleryImages(b.images),
+					layout: typeof b.layout === "string" ? b.layout : "grid",
+					columns: typeof b.columns === "number" ? b.columns : 3,
+					lightbox: b.lightbox !== false,
+					key: b._key ?? newKey(),
+					...styleAttr(b),
+				},
+			};
 		case "pb.stack": {
 			const layers = Array.isArray(b.layers) ? (b.layers as Array<Record<string, unknown>>) : [];
 			return {

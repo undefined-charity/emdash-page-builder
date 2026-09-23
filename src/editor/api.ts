@@ -178,9 +178,9 @@ export async function listFolders(): Promise<MediaFolder[] | null> {
  */
 export async function listImages(
 	cursor?: string,
-	options: { folderId?: string; search?: string } = {},
+	options: { folderId?: string; search?: string; kind?: "image" | "video" } = {},
 ): Promise<{ items: MediaItem[]; nextCursor?: string }> {
-	const q = new URLSearchParams({ limit: "60", mimeType: "image/" });
+	const q = new URLSearchParams({ limit: "60", mimeType: `${options.kind ?? "image"}/` });
 	if (cursor) q.set("cursor", cursor);
 	if (options.folderId) q.set("folderId", options.folderId);
 	if (options.search?.trim()) q.set("q", options.search.trim());
