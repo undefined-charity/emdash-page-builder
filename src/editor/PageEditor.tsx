@@ -16,9 +16,11 @@ import { newKey } from "../convert/types.js";
 import type { BuilderConfig, SiteSettings } from "../schema/config.js";
 import { builderExtensions } from "../schema/extensions.js";
 import { anyThemeToCss, cleanAnyTheme, cleanTheme, themeToCss, type PageTheme } from "../schema/style.js";
-import { ConflictError, LockedError, createPublishedEntry, fetchSlotPreviews, loadLatest, loadSiteTheme, publishEntry, saveEntry, saveSiteSettings, saveSiteTheme, uploadImage } from "./api.js";
+import { ConflictError, LockedError, type EntrySummary, createPublishedEntry, fetchSlotPreviews, loadLatest, loadSiteTheme, publishEntry, saveEntry, saveSiteSettings, saveSiteTheme, uploadImage } from "./api.js";
 import { closedSlash, insertItems, slashExtension, type InsertContext, type InsertItem, type SlashState } from "./commands.js";
-import { MediaDialog, mediaToImageAttrs, PromptDialog, ReusableDialog } from "./Dialogs.js";
+import { MediaDialog, mediaToImageAttrs, PagesDialog, PromptDialog, ReusableDialog } from "./Dialogs.js";
+import { showPageBackground } from "./BackgroundPanel.js";
+import { BACKGROUND_KEY, cleanPageBackground, type PageBackground } from "../schema/background.js";
 import { Inspector } from "./Inspector.js";
 import { PreviewOverlay } from "./Preview.js";
 import { sitePalette } from "./SitePanel.js";
@@ -58,8 +60,14 @@ const AUTOSAVE_MS = 1200;
 type Dialog =
 	| { kind: "media"; accept?: "image" | "video"; onPick: (attrs: Record<string, unknown>) => void; onPickMany?: (list: Array<Record<string, unknown>>) => void }
 	| { kind: "reusable" }
+	| { kind: "copyBackground" }
 	| { kind: "saveReusable"; block: BlockRef }
 	| null;
+
+/** The background stored in a page's theme field. */
+function backgroundOf(theme: unknown): PageBackground | undefined {
+	return theme && typeof theme === "object" ? cleanPageBackground((theme as Record<string, unknown>)[BACKGROUND_KEY]) : undefined;
+}
 
 export function PageEditor(props: PageEditorProps) {
 	const { config } = props;
@@ -68,6 +76,10 @@ export function PageEditor(props: PageEditorProps) {
 	const [inspectorOpen, setInspectorOpen] = React.useState(true);
 	const [save, setSave] = React.useState<{ state: SaveState; error?: string; holder?: string }>({ state: "loading" });
 	const [theme, setTheme] = React.useState<PageTheme>(() => cleanTheme(props.theme, config.themeTokens) ?? {});
+	/** The page's own background, kept in its theme field beside the tokens. */
+	const [pageBg, setPageBg] = React.useState<PageBackground | undefined>(() => backgroundOf(props.theme));
+	const pageBgRef = React.useRef(pageBg);
+	pageBgRef.current = pageBg;
 	const [siteTheme, setSiteTheme] = React.useState<PageTheme>({});
 	const [siteSettings, setSiteSettings] = React.useState<SiteSettings>({});
 	// The ribbon and panel offer the site's own colours first.
@@ -202,7 +214,11 @@ export function PageEditor(props: PageEditorProps) {
 		if (!dirty.current.body && !dirty.current.theme) return;
 		const data: Record<string, unknown> = {};
 		if (dirty.current.body) data[props.field] = docToPortableText(editor.getJSON(), config);
-		if (dirty.current.theme && props.themeField) data[props.themeField] = cleanTheme(themeRef.current, config.themeTokens) ?? null;
+		if (dirty.current.theme && props.themeField) {
+			const tokens = cleanTheme(themeRef.current, config.themeTokens);
+			const bg = cleanPageBackground(pageBgRef.current);
+			data[props.themeField] = tokens || bg ? { ...tokens, ...(bg ? { [BACKGROUND_KEY]: bg } : {}) } : null;
+		}
 		dirty.current = { body: false, theme: false };
 		setSave({ state: "saving" });
 		document.dispatchEvent(new CustomEvent("emdash:save", { detail: { state: "saving" } }));
@@ -263,6 +279,8 @@ export function PageEditor(props: PageEditorProps) {
 				}
 				const serverTheme = cleanTheme(latest.data[props.themeField], config.themeTokens) ?? {};
 				if (JSON.stringify(serverTheme) !== JSON.stringify(themeRef.current)) setTheme(serverTheme);
+				const serverBg = backgroundOf(latest.data[props.themeField]);
+				if (JSON.stringify(serverBg) !== JSON.stringify(pageBgRef.current)) setPageBg(serverBg);
 				hold.current = null;
 				setSave({ state: dirty.current.body || dirty.current.theme ? "dirty" : "saved" });
 				if (dirty.current.body || dirty.current.theme) void flush();
@@ -467,6 +485,32 @@ export function PageEditor(props: PageEditorProps) {
 			.catch((e) => setSave({ state: "error", error: e instanceof Error ? e.message : String(e) }));
 	};
 
+	// The page background: the page's own, or the site's default. Only the
+	// page's own document shows it (a header or footer has no page of its own).
+	const pageDocument = !props.region && !props.embedded && Boolean(props.themeField);
+	React.useEffect(() => {
+		if (pageDocument) showPageBackground(pageBg ?? siteSettings.background, config.phoneBreakpoint);
+	}, [pageDocument, pageBg, siteSettings.background, config.phoneBreakpoint]);
+
+	/** Give other pages this page's background; they're published along with this one. */
+	const useBackgroundOn = async (pages: EntrySummary[]) => {
+		setDialog(null);
+		const bg = cleanPageBackground(pageBgRef.current);
+		for (const page of pages) {
+			try {
+				const latest = await loadLatest(props.collection, page.id);
+				const current = (latest.data[props.themeField] ?? {}) as Record<string, unknown>;
+				const next = { ...current };
+				if (bg) next[BACKGROUND_KEY] = bg;
+				else delete next[BACKGROUND_KEY];
+				await saveEntry(props.collection, page.id, { [props.themeField]: next }, { rev: latest.rev });
+				fieldEdits.add({ collection: props.collection, id: page.id, label: page.title });
+			} catch (e) {
+				alert(`Couldn't change “${page.title}”: ${e instanceof Error ? e.message : e}`);
+			}
+		}
+	};
+
 	// ── Theme: live preview on the whole page ─────────────────────────────────
 
 	React.useEffect(() => {
@@ -587,6 +631,13 @@ export function PageEditor(props: PageEditorProps) {
 					siteSettings={siteSettings}
 					onSiteSettings={changeSiteSettings}
 					onPreviewSiteTheme={previewSiteTheme}
+					pageBackground={pageBg}
+					onPageBackground={(bg) => {
+						setPageBg(bg);
+						pageBgRef.current = bg;
+						markDirty("theme");
+					}}
+					onUseBackgroundElsewhere={() => setDialog({ kind: "copyBackground" })}
 					pageTab={!props.region && Boolean(props.themeField)}
 					onRefreshPreviews={() => void fetchSlotPreviews(props.rootId).then(previewStore.set).catch(() => undefined)}
 					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}
@@ -629,6 +680,17 @@ export function PageEditor(props: PageEditorProps) {
 							dialog.onPickMany?.(list.map(mediaToImageAttrs));
 						})
 					}
+				/>
+			)}
+			{dialog?.kind === "copyBackground" && (
+				<PagesDialog
+					title="Use this background on other pages"
+					collection={props.collection}
+					exclude={props.entryId}
+					confirm="Use it on these pages"
+					hint="Each page you choose gets this page's background. They're published along with this page."
+					onClose={() => setDialog(null)}
+					onConfirm={(pages) => void useBackgroundOn(pages)}
 				/>
 			)}
 			{dialog?.kind === "reusable" && (

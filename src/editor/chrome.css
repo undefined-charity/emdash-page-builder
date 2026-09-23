@@ -816,3 +816,18 @@
 	top: 40%;
 	color: var(--muted);
 }
+
+.pb-bg-thumb {
+	width: 100%;
+	max-height: 110px;
+	object-fit: cover;
+	border-radius: 6px;
+	display: block;
+}
+.pb-checklist {
+	max-height: 50vh;
+	overflow-y: auto;
+}
+.pb-checklist li {
+	padding: 4px 2px;
+}

@@ -191,7 +191,7 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 		case "pb.section":
 			return {
 				type: "pbSection",
-				attrs: { ...(typeof b.variant === "string" ? { variant: b.variant } : {}), ...styleAttr(b) },
+				attrs: { ...(typeof b.variant === "string" ? { variant: b.variant } : {}), ...(typeof b.backgroundVideo === "string" ? { bgVideo: b.backgroundVideo } : {}), ...styleAttr(b) },
 				content: nonEmpty(blocksToNodes(arr(b.content), config)) };
 		case "pb.columns": {
 			const cols = Array.isArray(b.columns) ? (b.columns as Array<Record<string, unknown>>) : [];

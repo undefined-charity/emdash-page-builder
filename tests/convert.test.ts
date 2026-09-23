@@ -7,6 +7,7 @@ import { renderDocument } from "../src/render/html.ts";
 import { resolveConfig } from "../src/schema/config.ts";
 import { anyThemeToCss, responsiveCss } from "../src/schema/style.ts";
 import { BUILT_IN_PRESETS, presetValues } from "../src/schema/presets.ts";
+import { pageBackgroundCss, pageBackgroundVideo } from "../src/schema/background.ts";
 import { answerVw, answerWidth } from "../src/editor/device.ts";
 
 const config = resolveConfig({
@@ -302,4 +303,25 @@ test("presets set the site's tokens by role, or text styles where it has none", 
 	// No heading-colour or text-colour token: the text styles take them.
 	assert.equal(values["--pb-ts-h1-color"], "#1f1a17");
 	assert.equal(values["--pb-ts-p-color"], "#2b2622");
+});
+
+test("page backgrounds are validated and drawn on the root, with a phone image", () => {
+	const css = pageBackgroundCss({ color: "#000", image: "/bg.jpg", size: "tile", position: "top", fixed: true, phoneImage: "/tall.jpg", video: "javascript:x" }, 700)!;
+	assert.match(css, /:root:root:root \{ background-color: #000; background-image: url\("\/bg\.jpg"\); background-size: auto; background-repeat: repeat; background-position: center top; background-attachment: fixed;/);
+	assert.match(css, /:root:root:root body \{ background: transparent; \}/);
+	assert.match(css, /@media \(max-width: 700px\) \{ :root:root:root \{ background-image: url\("\/tall\.jpg"\)/);
+	assert.equal(pageBackgroundVideo({ video: "javascript:x" }), null);
+	assert.deepEqual(pageBackgroundVideo({ video: "/v.mp4", image: "/p.jpg" }), { src: "/v.mp4", poster: "/p.jpg" });
+	assert.equal(pageBackgroundCss({ image: "url(x) ; }" }, 640), undefined);
+});
+
+test("a section's background video round-trips and uses its background image as the still", () => {
+	const blocks = [
+		{ _type: "pb.section", _key: "s", backgroundVideo: "/_emdash/api/media/file/v.mp4", pbStyle: { backgroundImage: "/p.jpg" }, content: [{ _type: "block", _key: "b", style: "normal", markDefs: [], children: [span("Hi")] }] },
+	];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(normalize(once), normalize(blocks));
+	const html = renderDocument(blocks, config).parts.join("");
+	assert.match(html, /class="pb-section pb-section--video"/);
+	assert.match(html, /<video class="pb-section__video" src="\/_emdash\/api\/media\/file\/v\.mp4" poster="\/p\.jpg" autoplay="" muted="" loop="" playsinline="" aria-hidden="true" tabindex="-1"> <\/video><div class="pb-section__body"><p>Hi<\/p><\/div>/);
 });

@@ -5,6 +5,7 @@
  * be passed from Astro to the editor island as a prop.
  */
 
+import { cleanPageBackground, type PageBackground } from "./background.js";
 import type { ThemePreset } from "./presets.js";
 import type { ThemeToken } from "./style.js";
 
@@ -134,6 +135,8 @@ export interface SiteSettings {
 	 * using it follows when it changes.
 	 */
 	palette?: Array<{ slug: string; label: string }>;
+	/** The page background of every page that doesn't set its own. */
+	background?: PageBackground;
 }
 
 export function cleanSiteSettings(value: unknown): SiteSettings {
@@ -143,7 +146,8 @@ export function cleanSiteSettings(value: unknown): SiteSettings {
 				.filter((c): c is { slug: string; label: string } => !!c && typeof c.slug === "string" && /^[a-z0-9-]{1,40}$/.test(c.slug) && typeof c.label === "string")
 				.map((c) => ({ slug: c.slug, label: c.label.slice(0, 60) }))
 		: [];
-	return { ...(v.backToTop === true ? { backToTop: true } : {}), ...(palette.length ? { palette } : {}) };
+	const background = cleanPageBackground(v.background);
+	return { ...(v.backToTop === true ? { backToTop: true } : {}), ...(palette.length ? { palette } : {}), ...(background ? { background } : {}) };
 }
 
 /** A site colour's token. */

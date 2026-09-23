@@ -16,6 +16,7 @@ import { PortableText } from "emdash/ui";
 
 import { renderDocument } from "../render/html.js";
 import { resolveConfig, type BuilderConfig } from "../schema/config.js";
+import { BACKGROUND_KEY, cleanPageBackground, pageBackgroundCss, pageBackgroundVideo } from "../schema/background.js";
 import { responsiveCss, themeToCss } from "../schema/style.js";
 import EditorIsland from "../editor/EditorIsland.tsx";
 import { loadSite } from "./site.js";
@@ -74,7 +75,12 @@ for (const slot of slots) {
 const themeCss = nested || region || embedded ? undefined : themeToCss(theme, config.themeTokens);
 // The page's own document (not a header, footer or embedded one) carries the page-wide extras.
 const pageDoc = !nested && !region && !embedded;
-const backToTop = pageDoc && (await loadSite(Astro)).settings.backToTop;
+const site = pageDoc ? await loadSite(Astro) : undefined;
+const backToTop = site?.settings.backToTop;
+// The page's own background, or the site's default.
+const background = site ? (cleanPageBackground((theme as Record<string, unknown> | null | undefined)?.[BACKGROUND_KEY]) ?? site.settings.background) : undefined;
+const backgroundCss = pageBackgroundCss(background, config.phoneBreakpoint);
+const backgroundVideo = pageBackgroundVideo(background);
 const rootId = entry ? `pb-${entry.collection}-${entry.id}-${entry.field ?? "body"}` : undefined;
 const Self = Astro.self;
 const islandProps =
@@ -97,6 +103,12 @@ const islandProps =
 
 {themeCss && <style set:html={themeCss} data-pb-theme />}
 {!nested && <style set:html={responsiveCss(config.phoneBreakpoint)} data-pb-responsive />}
+{backgroundCss && <style set:html={backgroundCss} data-pb-page-bg-css />}
+{backgroundVideo && (
+	<div class="pb-page-bg" data-pb-page-bg aria-hidden="true">
+		<video src={backgroundVideo.src} poster={backgroundVideo.poster} autoplay muted loop playsinline preload="auto"></video>
+	</div>
+)}
 <div
 	class:list={["pb-doc", className]}
 	data-pb-root={rootId}

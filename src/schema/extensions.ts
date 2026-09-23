@@ -15,7 +15,7 @@ import StarterKit from "@tiptap/starter-kit";
 
 import { defaultSectionStyle, findTextStyle, type BuilderConfig } from "./config.js";
 import { GALLERY_LAYOUTS, galleryDom, videoDom, videoSource } from "./media.js";
-import { blockStyleToCss, cleanBlockStyle, cleanHide, phoneStyleAttrs } from "./style.js";
+import { blockStyleToCss, cleanBlockStyle, cleanHide, phoneStyleAttrs, safeUrl } from "./style.js";
 
 const noDom = { rendered: false } as const;
 const cls = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
@@ -151,19 +151,34 @@ const Section = (config: BuilderConfig) =>
 		isolating: true,
 		draggable: true,
 		addAttributes() {
-			return { variant: { default: defaultSectionStyle(config)?.name ?? "default", ...noDom } };
+			return {
+				variant: { default: defaultSectionStyle(config)?.name ?? "default", ...noDom },
+				/** A looping muted video behind the section; its background image is the still picture. */
+				bgVideo: { default: "", ...noDom },
+			};
 		},
 		parseHTML: () => [{ tag: "[data-pb-section]", getAttrs: (el) => ({ variant: (el as HTMLElement).dataset.pbSection }) }],
 		renderHTML({ node, HTMLAttributes }) {
 			const style = config.sectionStyles.find((s) => s.name === node.attrs.variant) ?? defaultSectionStyle(config);
+			const video = safeUrl(node.attrs.bgVideo);
+			const attrs = mergeAttributes(HTMLAttributes, {
+				class: cls("pb-section", style?.className, video && "pb-section--video"),
+				"data-pb-section": style?.name ?? "default",
+			});
+			if (!video) return [style?.tag ?? "section", attrs, 0];
+			const poster = cleanBlockStyle(node.attrs.pbStyle)?.backgroundImage;
 			return [
 				style?.tag ?? "section",
-				mergeAttributes(HTMLAttributes, {
-					class: cls("pb-section", style?.className),
-					"data-pb-section": style?.name ?? "default",
-				}),
-				0,
-			];
+				attrs,
+				[
+					"video",
+					{ class: "pb-section__video", src: video, ...(poster ? { poster } : {}), autoplay: "", muted: "", loop: "", playsinline: "", "aria-hidden": "true", tabindex: "-1" },
+					// Never an empty element: `<video/>` would swallow what follows.
+					" ",
+				],
+				// `display: contents`, so the section lays out its blocks as before.
+				["div", { class: "pb-section__body" }, 0],
+			] as never;
 		},
 	});
 

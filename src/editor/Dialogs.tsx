@@ -257,3 +257,68 @@ export function PromptDialog({
 		</Modal>
 	);
 }
+
+/** Choose some of a collection's entries (pages), with checkboxes. */
+export function PagesDialog({
+	title,
+	collection,
+	exclude,
+	confirm,
+	hint,
+	onConfirm,
+	onClose,
+}: {
+	title: string;
+	collection: string;
+	exclude?: string;
+	confirm: string;
+	hint?: string;
+	onConfirm: (entries: EntrySummary[]) => void;
+	onClose: () => void;
+}) {
+	const [entries, setEntries] = React.useState<EntrySummary[] | null>(null);
+	const [error, setError] = React.useState<string | null>(null);
+	const [chosen, setChosen] = React.useState<Set<string>>(new Set());
+	const [query, setQuery] = React.useState("");
+	React.useEffect(() => {
+		listEntries(collection)
+			.then((list) => setEntries(list.filter((e) => e.id !== exclude)))
+			.catch((e) => setError(e instanceof Error ? e.message : String(e)));
+	}, [collection, exclude]);
+	const shown = (entries ?? []).filter((e) => !query || e.title.toLowerCase().includes(query.toLowerCase()));
+	const toggle = (id: string) =>
+		setChosen((prev) => {
+			const next = new Set(prev);
+			if (next.has(id)) next.delete(id);
+			else next.add(id);
+			return next;
+		});
+	return (
+		<Modal title={title} onClose={onClose}>
+			{hint && <p className="pb-hint">{hint}</p>}
+			<input type="search" placeholder="Search pages" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
+			{error && <p className="pb-error">{error}</p>}
+			{entries === null && !error && <p className="pb-hint">Loading…</p>}
+			<ul className="pb-list pb-checklist">
+				{shown.map((e) => (
+					<li key={e.id}>
+						<label className="pb-toggle">
+							<input type="checkbox" checked={chosen.has(e.id)} onChange={() => toggle(e.id)} />
+							<span>{e.title}</span>
+							{e.status !== "published" && <span className="pb-tag">{e.status}</span>}
+						</label>
+					</li>
+				))}
+			</ul>
+			<div className="pb-row pb-row--end">
+				<button type="button" onClick={onClose}>
+					Cancel
+				</button>
+				<button type="button" className="primary" disabled={!chosen.size} onClick={() => onConfirm((entries ?? []).filter((e) => chosen.has(e.id)))}>
+					{confirm}
+					{chosen.size ? ` (${chosen.size})` : ""}
+				</button>
+			</div>
+		</Modal>
+	);
+}

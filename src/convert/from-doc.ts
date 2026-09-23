@@ -158,7 +158,14 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 			});
 			return;
 		case "pbSection":
-			out.push({ _type: "pb.section", _key: newKey(), ...(a.variant ? { variant: a.variant } : {}), ...styleOf(a), content: nested(node.content, config) });
+			out.push({
+				_type: "pb.section",
+				_key: newKey(),
+				...(a.variant ? { variant: a.variant } : {}),
+				...(a.bgVideo ? { backgroundVideo: a.bgVideo } : {}),
+				...styleOf(a),
+				content: nested(node.content, config),
+			});
 			return;
 		case "pbColumns":
 			out.push({

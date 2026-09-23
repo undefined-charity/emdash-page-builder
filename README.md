@@ -21,10 +21,11 @@ Content is stored as ordinary Portable Text in the entry's rich-text field, so t
 - **Layers**: each layer is aligned in the block (top, middle or bottom; left, centre, right or full width) and can be brought forward or sent back. Empty parts of a layer let clicks through to the layers behind it. On phones the layers can show one after another instead.
 - **A side panel** with the selected block's settings and a breadcrumb to reach the blocks around it, plus:
   - **Style** — text/background/border colour, background image, padding, rounded corners, width, height, text size, font — per block
-  - **Page** — the site's design tokens (colours, fonts, sizes) overridden for this page only
+  - **Page** — the site's design tokens (colours, fonts, sizes) overridden for this page only, and the page background: a colour, an image (fill, fit or tile; kept in view at the top, middle or bottom; scrolling or staying put; optionally a different image on phones) or a looping muted video with a still picture for anyone who prefers less motion. **Use on other pages…** copies it to pages you pick, which are published along with this one
   - **Site** — the same tokens as the site-wide defaults every page inherits, plus:
     - **Looks**: ready-made palettes and font pairings. Point at one to try it on the page; click to use it everywhere. They set the site's own tokens by role (background, text, accent, heading colour, heading and body fonts), which is guessed from each token's name or set with `role` on the token. Sites can add their own with `themePresets`.
     - **Text styles**: font, size, weight, line height, letter spacing, colour and case for Heading 1–4, normal text, quotes, button text and the site's named styles. They apply on every page, and a block's own style still wins.
+    - **Default page background**: the same, for every page that doesn't set its own
     - **Site colours**: named colours offered first in every colour picker. Anything using one changes when it does.
 - **Phones**: the ribbon's 🖥 / 📱 switch (<kbd>⌥⌘P</kbd> / <kbd>Ctrl+Alt+P</kbd>) shows the page at phone width, laid out as a phone lays it out, and it stays editable. In the phone view the **Style** group, text alignment and image size and position are saved for phones only; the desktop look is untouched. **Show on** hides any block on phones or on desktops; hidden blocks stay visible but dimmed while editing, and **Hidden blocks** in the side panel lists them.
 - **Preview**: the ribbon's 👁 Preview shows the page as visitors will see it once published, with every unpublished change (the page's, the header's and footer's, embedded entries') and none of the editor, on a desktop or a phone. Links followed in it stay previews; it can also open in a new tab (`?pb-preview`).
@@ -169,7 +170,7 @@ An external block is any Portable Text type your site renders — the builder ke
 | `image` | EmDash's image block, plus `alignment` (`left`, `right`, `center`, `wide`), `displayWidth`, `link` |
 | `buttons` | EmDash's buttons block, plus a `variant` per button |
 | `break` | Divider |
-| `pb.section` | `{ variant, content: Block[] }` |
+| `pb.section` | `{ variant, backgroundVideo?, content: Block[] }` (a background video uses the section's background image as its still) |
 | `pb.columns` | `{ ratio, columns: [{ content: Block[] }] }` |
 | `pb.cards` | `{ cards: [{ content: Block[] }] }` |
 | `pb.accordion` | `{ items: [{ summary, content: Block[], open }] }` |

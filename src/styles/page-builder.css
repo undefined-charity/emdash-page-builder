@@ -392,3 +392,49 @@ html:has(.pb-back-to-top) {
 	line-height: 1;
 	cursor: pointer;
 }
+
+/* A video behind the whole page. Its still picture (the page background
+   image) shows instead for anyone who prefers less motion, and wherever the
+   device won't play it by itself. */
+:where(.pb-page-bg) {
+	position: fixed;
+	inset: 0;
+	z-index: -1;
+	overflow: hidden;
+	pointer-events: none;
+}
+:where(.pb-page-bg video) {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+@media (prefers-reduced-motion: reduce) {
+	:where(.pb-page-bg video) {
+		display: none;
+	}
+}
+
+/* A section with a video behind it. */
+:where(.pb-section--video) {
+	position: relative;
+	isolation: isolate;
+	overflow: hidden;
+}
+:where(.pb-section__video) {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	pointer-events: none;
+}
+:where(.pb-section__body) {
+	display: contents;
+}
+@media (prefers-reduced-motion: reduce) {
+	:where(.pb-section__video) {
+		display: none;
+	}
+}

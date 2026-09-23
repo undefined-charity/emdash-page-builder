@@ -10,6 +10,8 @@ import type { BuilderConfig, ExternalBlock, ExternalField, SiteSettings } from "
 import { HIDEABLE_TYPES, SPACER_SIZES, STYLABLE_TYPES } from "../schema/extensions.js";
 import { cleanBlockStyle, cleanHide, cleanPhoneStyle, type BlockStyle, type PageTheme, type PhoneStyle } from "../schema/style.js";
 import { cleanGalleryImages, videoSource, type GalleryImage } from "../schema/media.js";
+import type { PageBackground } from "../schema/background.js";
+import { BackgroundGroup } from "./BackgroundPanel.js";
 import { useDevice } from "./device.js";
 import { PaletteGroup, PresetsGroup, TextStylesGroup, type SiteDesignProps } from "./SitePanel.js";
 import { loadOptions } from "./api.js";
@@ -42,6 +44,10 @@ export interface InspectorProps {
 	onSiteSettings: (settings: SiteSettings) => void;
 	/** Show a site design on the page without saving it (null: stop). */
 	onPreviewSiteTheme: (theme: PageTheme | null) => void;
+	/** This page's own background (the Page tab). */
+	pageBackground: PageBackground | undefined;
+	onPageBackground: (bg: PageBackground | undefined) => void;
+	onUseBackgroundElsewhere: () => void;
 	onPickImage: (onPick: (attrs: Record<string, unknown>) => void) => void;
 	onPickVideo: (onPick: (attrs: Record<string, unknown>) => void) => void;
 	onPickImages: (onPick: (list: Array<Record<string, unknown>>) => void) => void;
@@ -138,6 +144,24 @@ export function Inspector(props: InspectorProps) {
 					onTheme={props.onTheme}
 					intro="Overrides for this page only — header and footer included. Blank means the site default (the Site tab)."
 					resetLabel="Reset the page to the site design"
+					before={
+						<BackgroundGroup
+							title="Page background"
+							value={props.pageBackground}
+							onChange={props.onPageBackground}
+							inheritedHint={props.siteSettings.background ? "This page uses the site's default background (the Site tab)." : "This page uses the site's own background."}
+							palette={config.palette}
+							onPickImage={props.onPickImage}
+							onPickVideo={props.onPickVideo}
+							extra={
+								props.pageBackground && (
+									<button type="button" onClick={props.onUseBackgroundElsewhere}>
+										Use on other pages…
+									</button>
+								)
+							}
+						/>
+					}
 				/>
 			) : (
 				<ThemePanel
@@ -152,6 +176,15 @@ export function Inspector(props: InspectorProps) {
 							<PresetsGroup {...siteDesign} />
 							<TextStylesGroup {...siteDesign} />
 							<PaletteGroup {...siteDesign} />
+							<BackgroundGroup
+								title="Default page background"
+								value={props.siteSettings.background}
+								onChange={(background) => props.onSiteSettings({ ...props.siteSettings, background })}
+								inheritedHint="Pages use the site's own background unless they set one on the Page tab."
+								palette={config.palette}
+								onPickImage={props.onPickImage}
+								onPickVideo={props.onPickVideo}
+							/>
 						</>
 					}
 				>
@@ -210,6 +243,20 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 					<Field label="Look">
 						<Select value={String(a.variant ?? "")} onChange={(variant) => set({ variant })} options={config.sectionStyles.map((s) => ({ label: s.label, value: s.name }))} />
 					</Field>
+					<div className="pb-field">
+						<span className="pb-field__label">
+							Background video
+							{Boolean(a.bgVideo) && (
+								<button type="button" className="pb-link" onClick={() => set({ bgVideo: "" })}>
+									remove
+								</button>
+							)}
+						</span>
+						<button type="button" onClick={() => onPickVideo((v) => set({ bgVideo: v.src }))}>
+							{a.bgVideo ? "Change video…" : "Choose a video…"}
+						</button>
+						<span className="pb-field__hint">Plays muted, on a loop. The background image (Style) shows before it plays, and instead of it for anyone who prefers less motion.</span>
+					</div>
 				</Group>
 			)}
 
