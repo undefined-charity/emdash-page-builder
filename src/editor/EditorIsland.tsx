@@ -81,7 +81,7 @@ export default function EditorIsland(props: Props) {
 	}, [props.rootId, props.root]);
 
 	if (!chrome || !ready) return null;
-	return <PageEditor {...props} chrome={chrome} />;
+	return <PageEditor {...props} chrome={chrome} embedded={Boolean(props.root)} />;
 }
 
 /**

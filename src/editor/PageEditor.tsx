@@ -49,6 +49,8 @@ export interface PageEditorProps {
 	 * it has no per-page design.
 	 */
 	region?: string;
+	/** Rendered inside a block of another editable document (see PageBuilder's `embedded`). */
+	embedded?: boolean;
 }
 
 const AUTOSAVE_MS = 1200;
@@ -142,7 +144,7 @@ export function PageEditor(props: PageEditorProps) {
 		],
 		content: portableTextToDoc(props.value, config),
 		editorProps: {
-			attributes: { class: "pb-doc pb-editor-content", "aria-label": "Page content", spellcheck: "true" },
+			attributes: { class: `pb-doc pb-editor-content${props.region || props.embedded ? "" : " pb-editor-content--page"}`, "aria-label": "Page content", spellcheck: "true" },
 			handleDrop: (view, event) => {
 				const files = [...(event.dataTransfer?.files ?? [])].filter((f) => f.type.startsWith("image/"));
 				if (!files.length) return false;

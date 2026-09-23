@@ -32,7 +32,7 @@ export type { ThemeToken, ThemeRole, BlockStyle, PageTheme } from "./schema/styl
 export type { ThemePreset } from "./schema/presets.js";
 
 const ID = "page-builder";
-const VERSION = "0.6.0";
+const VERSION = "0.6.1";
 const ADMIN_PAGES = [{ path: "/", label: "Page Builder", icon: "layout" }];
 
 export interface PageBuilderOptions {

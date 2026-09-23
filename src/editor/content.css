@@ -5,6 +5,11 @@
 
 .pb-editor-content {
 	outline: none;
+}
+/* Room to click into on a page with little on it. Only the page's own
+   document: a header, a footer or an embedded document keeps its own
+   height, or it would push the page down while editing. */
+.pb-editor-content--page {
 	min-height: 40vh;
 }
 
