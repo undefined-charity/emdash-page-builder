@@ -36,3 +36,45 @@ export function useIsActive(id: string): boolean {
 		() => false,
 	);
 }
+
+// ── Publishing everything on the page ─────────────────────────────────────────
+
+/** An editable document on this page, as the ribbon's Publish sees it. */
+export interface PublishableDocument {
+	id: string;
+	/** What it is, for Publish's tooltip ("This page", "Site header"). */
+	label: string;
+	unpublished: boolean;
+	/** Save anything pending, then make it live. Throws if it can't. */
+	publish: () => Promise<void>;
+}
+
+let documents = new Map<string, PublishableDocument>();
+const documentListeners = new Set<() => void>();
+const documentsChanged = () => documentListeners.forEach((l) => l());
+
+export const publishable = {
+	set(doc: PublishableDocument) {
+		documents = new Map(documents).set(doc.id, doc);
+		documentsChanged();
+	},
+	remove(id: string) {
+		if (!documents.has(id)) return;
+		documents = new Map(documents);
+		documents.delete(id);
+		documentsChanged();
+	},
+	list: () => [...documents.values()],
+};
+
+/** Every editable document on the page, updated as they change. */
+export function usePublishable(): Map<string, PublishableDocument> {
+	return React.useSyncExternalStore(
+		(l) => {
+			documentListeners.add(l);
+			return () => documentListeners.delete(l);
+		},
+		() => documents,
+		() => documents,
+	);
+}

@@ -402,3 +402,11 @@ html.pb-dragging .pb-handle {
 .pb-editor-content .pb-layer > .pb-add-row {
 	pointer-events: auto;
 }
+
+/* One Publish: the ribbon's publishes everything on the page (the page, its
+   header and footer, embedded content, other entries changed here). EmDash's
+   toolbar only knows the page, so while the builder is running its own
+   Publish button and status badge are hidden; its Edit switch stays. */
+#emdash-toolbar :is(#emdash-tb-publish, #emdash-tb-status) {
+	display: none !important;
+}

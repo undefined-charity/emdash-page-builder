@@ -39,7 +39,7 @@ Content is stored as ordinary Portable Text in the entry's rich-text field, so t
 - **Animation**: any block can fade, slide, zoom or reveal as it scrolls into view, once or every time, quickly or slowly, with a delay; ▶ Play previews it in the editor. A few lines of script ship only on pages that use it, and pages stay fully visible without it. The Site tab can also fade or slide between pages (CSS view transitions, no script). None of it plays for visitors who ask for less motion.
 - **Back-to-top button**: a Site tab option that adds a button to every page once a visitor scrolls down (no JavaScript).
 - **Site regions**: the header and footer are builder documents too, edited in place from any page; the ribbon says when you're editing something shared.
-- **Autosave** as a draft, a **Publish** button for whatever you're editing, and conflict protection — if the page changed in another tab or by another person, you're asked instead of silently overwriting.
+- **Autosave** as a draft, one **Publish** button that makes everything on the page live together (the page, its header and footer, embedded content, and other pages or entries changed from it; its tooltip lists them), and conflict protection — if the page changed in another tab or by another person, you're asked instead of silently overwriting.
 
 Layering is the same as a word processor's: site stylesheet → **Site** design → **Page** design → block **Style** → formatting on the selection.
 

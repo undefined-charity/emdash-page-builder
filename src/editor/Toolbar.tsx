@@ -323,7 +323,7 @@ export function Toolbar({
 					className="primary pb-publish"
 					disabled={!publish.unpublished || publish.busy || save.state === "conflict"}
 					onClick={publish.run}
-					title={publish.unpublished ? `Make your saved changes live${publish.also?.length ? `, including ${publish.also.join(", ")}` : ""}` : "Everything here is live"}
+					title={publish.unpublished ? `Make live: ${publish.also?.length ? publish.also.join(", ") : "this page"}` : "Everything on this page is live"}
 				>
 					{publish.busy ? "Publishing…" : publish.unpublished ? "Publish" : "Published ✓"}
 				</button>

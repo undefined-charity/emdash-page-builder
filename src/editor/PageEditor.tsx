@@ -28,7 +28,7 @@ import { HistoryPanel } from "./History.js";
 import { sitePalette } from "./SitePanel.js";
 import { withNodeViews, previewStore } from "./nodeviews.js";
 import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
-import { claimIfFree, releaseIfActive, setActive, useIsActive } from "./registry.js";
+import { claimIfFree, publishable, releaseIfActive, setActive, useIsActive, usePublishable } from "./registry.js";
 import { fieldEdits, usePendingFieldEdits } from "./fields.js";
 import { addBlockRows, BLOCK_CONTAINERS, openLineAt } from "./addblock.js";
 import { DragDrop, startBlockDrag } from "./drag.js";
@@ -441,28 +441,44 @@ export function PageEditor(props: PageEditorProps) {
 		setPreviewing(true);
 	};
 
+	/** Save and publish this document (the ribbon's Publish calls this for every document on the page). */
+	const publishSelf = async () => {
+		if (timer.current) clearTimeout(timer.current);
+		await flush();
+		if (hold.current) throw new Error(`“${docLabel}” can't be saved right now; see the ribbon.`);
+		await publishEntry(props.collection, props.entryId);
+		fieldEdits.published(props.collection, props.entryId);
+		// History marks the version that went live (EmDash only keeps the current one).
+		void entryRevisions(props.collection, props.entryId)
+			.then(({ live }) => (live ? markVersion(props.collection, props.entryId, live, { published: true }) : undefined))
+			.catch(() => undefined);
+		// Publishing changes the entry's revision; pick up the new token.
+		rev.current = (await loadLatest(props.collection, props.entryId)).rev;
+		setUnpublished(false);
+	};
+	const publishSelfRef = React.useRef(publishSelf);
+	publishSelfRef.current = publishSelf;
+
+	// This document, for the ribbon's Publish, whichever document has the ribbon.
+	const docLabel = props.region ?? (props.embedded ? props.title || "Embedded content" : "This page");
+	React.useEffect(() => {
+		publishable.set({ id: props.rootId, label: docLabel, unpublished, publish: () => publishSelfRef.current() });
+	}, [props.rootId, docLabel, unpublished]);
+	React.useEffect(() => () => publishable.remove(props.rootId), [props.rootId]);
+
+	/**
+	 * Publish: everything on this page with unpublished changes (the page, the
+	 * header and footer, embedded content), and the other entries changed from
+	 * here (fields in a block's preview, pages changed in the Pages panel).
+	 */
 	const publish = async () => {
 		setPublishing(true);
 		try {
-			if (timer.current) clearTimeout(timer.current);
-			await flush();
-			if (hold.current) return;
-			await publishEntry(props.collection, props.entryId);
-			fieldEdits.published(props.collection, props.entryId);
-			// History marks the version that went live (EmDash only keeps the current one).
-			void entryRevisions(props.collection, props.entryId)
-				.then(({ live }) => (live ? markVersion(props.collection, props.entryId, live, { published: true }) : undefined))
-				.catch(() => undefined);
-			// Fields of other entries edited on this page go live with it.
+			for (const doc of publishable.list()) if (doc.unpublished || doc.id === props.rootId) await doc.publish();
 			for (const other of fieldEdits.list()) {
 				await publishEntry(other.collection, other.id);
 				fieldEdits.published(other.collection, other.id);
-				document.dispatchEvent(new CustomEvent("emdash:content-changed", { detail: { collection: other.collection, id: other.id } }));
 			}
-			// Publishing changes the entry's revision; pick up the new token.
-			rev.current = (await loadLatest(props.collection, props.entryId)).rev;
-			setUnpublished(false);
-			document.dispatchEvent(new CustomEvent("emdash:content-changed", { detail: { collection: props.collection, id: props.entryId } }));
 		} catch (e) {
 			setSave({
 				state: "error",
@@ -472,6 +488,8 @@ export function PageEditor(props: PageEditorProps) {
 			setPublishing(false);
 		}
 	};
+	const documentsOnPage = usePublishable();
+	const toPublish = [...documentsOnPage.values()].filter((d) => d.unpublished).map((d) => d.label);
 
 	const resolveLock = async (override: boolean) => {
 		hold.current = null;
@@ -715,7 +733,7 @@ export function PageEditor(props: PageEditorProps) {
 				onSaveNow={() => void flush()}
 				onResolveConflict={(keep) => void resolveConflict(keep)}
 				onResolveLock={(override) => void resolveLock(override)}
-				publish={{ unpublished: unpublished || pendingFields.length > 0, also: pendingFields.map((p) => p.label), busy: publishing, run: () => void publish() }}
+				publish={{ unpublished: toPublish.length > 0 || pendingFields.length > 0, also: [...toPublish, ...pendingFields.map((p) => p.label)], busy: publishing, run: () => void publish() }}
 				insert={{ items, run: (item) => runItem(item) }}
 				inspectorOpen={inspectorOpen}
 				onToggleInspector={() => setInspectorOpen((o) => !o)}
