@@ -96,6 +96,23 @@ function parseRef(el: HTMLElement): Ref | null {
 	}
 }
 
+/** A field the site renders with its line breaks (white-space: pre-line / pre-wrap) keeps them. */
+function multiline(el: HTMLElement): boolean {
+	return /^pre/.test(getComputedStyle(el).whiteSpace);
+}
+
+/** What gets saved: one line, or the typed lines with blank runs trimmed. */
+function normalise(text: string, keepLines: boolean): string {
+	if (!keepLines) return text.replace(/\s+/g, " ").trim();
+	return text
+		.replace(/\r\n?/g, "\n")
+		.split("\n")
+		.map((line) => line.replace(/[ \t]+/g, " ").trim())
+		.join("\n")
+		.replace(/\n{3,}/g, "\n\n")
+		.trim();
+}
+
 /** Rich-text fields are rendered as blocks; only plain text is edited here. */
 const BLOCK_CHILDREN = "p,div,section,article,figure,ul,ol,li,table,h1,h2,h3,h4,h5,h6,img,picture,video,iframe";
 
@@ -127,10 +144,11 @@ export function attachFieldEditing(container: HTMLElement): () => void {
 		const annotation = el.dataset.emdashRef!;
 		delete el.dataset.emdashRef;
 		el.dataset.pbFieldRef = annotation;
+		const lines = multiline(el);
 		el.contentEditable = "plaintext-only";
 		el.spellcheck = true;
 		el.classList.add("pb-ed-field");
-		el.title = "Click to edit. This text belongs to what the block shows (an event, say); it goes live when you publish the page.";
+		el.title = `Click to edit. This text belongs to what the block shows (an event, say); it goes live when you publish the page.${lines ? " Shift+Enter starts a new line." : ""}`;
 
 		const onFocus = () => {
 			original = el.textContent ?? "";
@@ -147,8 +165,8 @@ export function attachFieldEditing(container: HTMLElement): () => void {
 			}
 		};
 		const onBlur = async () => {
-			const value = (el.textContent ?? "").replace(/\s+/g, " ").trim();
-			if (saving || value === original.replace(/\s+/g, " ").trim()) return;
+			const value = normalise(el.textContent ?? "", lines);
+			if (saving || value === normalise(original, lines)) return;
 			saving = true;
 			el.classList.remove("pb-ed-field--error");
 			el.classList.add("pb-ed-field--saving");
