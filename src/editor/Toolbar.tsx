@@ -93,7 +93,21 @@ export function Toolbar({
 		const el = ribbon.current;
 		if (!el) return;
 		const root = document.documentElement.style;
-		const sized = new ResizeObserver(() => root.setProperty("--pb-ribbon-h", `${Math.ceil(el.getBoundingClientRect().height)}px`));
+		// Labels on the page tools while everything fits on one row with them;
+		// icons only when that saves a row.
+		let labelsWidth = 0;
+		const fit = () => {
+			const compact = el.classList.contains("pb-toolbar--compact");
+			if (!compact) labelsWidth = [...el.querySelectorAll<HTMLElement>(".pb-toolbar__end .pb-label")].reduce((w, l) => w + l.offsetWidth, 0);
+			const style = getComputedStyle(el);
+			const gap = parseFloat(style.columnGap) || 0;
+			const children = [...el.children] as HTMLElement[];
+			const used = children.reduce((w, c) => w + c.getBoundingClientRect().width, 0) + gap * Math.max(0, children.length - 1) + (compact ? labelsWidth : 0);
+			const room = el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+			el.classList.toggle("pb-toolbar--compact", used > room);
+			root.setProperty("--pb-ribbon-h", `${Math.ceil(el.getBoundingClientRect().height)}px`);
+		};
+		const sized = new ResizeObserver(fit);
 		sized.observe(el);
 		return () => {
 			sized.disconnect();
@@ -291,18 +305,18 @@ export function Toolbar({
 			</div>
 
 			<div className="pb-toolbar__end">
-				<button type="button" onClick={onPages} title="The site's pages: add, open, rename, menus, unpublish">
-					📄 Pages
+				<button type="button" onClick={onPages} aria-label="Pages" title="Pages: the site's pages (add, open, rename, menus, unpublish)">
+					📄<span className="pb-label"> Pages</span>
 				</button>
-				<button type="button" onClick={onHistory} title="Earlier versions of what you're editing: see, compare and restore them">
-					🕘 History
+				<button type="button" onClick={onHistory} aria-label="History" title="History: earlier versions of what you're editing (see, compare and restore them)">
+					🕘<span className="pb-label"> History</span>
 				</button>
 				<DeviceSwitch />
-				<button type="button" onClick={onPreview} title="See the page as visitors will, with your unpublished changes and without the editor">
-					👁 Preview
+				<button type="button" onClick={onPreview} aria-label="Preview" title="Preview: the page as visitors will see it, with your unpublished changes and without the editor">
+					👁<span className="pb-label"> Preview</span>
 				</button>
-				<button type="button" className={inspectorOpen ? "on" : ""} onClick={onToggleInspector} title="Show or hide the side panel">
-					⚙ Panel
+				<button type="button" className={inspectorOpen ? "on" : ""} onClick={onToggleInspector} aria-label="Side panel" title="Show or hide the side panel">
+					⚙<span className="pb-label"> Panel</span>
 				</button>
 				<button
 					type="button"
