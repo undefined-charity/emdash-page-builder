@@ -138,6 +138,39 @@ export interface PagesConfig {
 	urls: Record<string, string>;
 	/** A text field holding the page's search description, for a collection without EmDash's SEO settings (default: found by name). */
 	descriptionField?: string;
+	/**
+	 * The blocks a new page starts with (Portable Text). `{{title}}` in any
+	 * text is replaced by the title typed; keys are added where missing.
+	 * Default: a Heading 1 with the title, then an empty paragraph.
+	 */
+	newPage?: Array<Record<string, unknown>>;
+}
+
+/** The blocks a new page titled `title` starts with. */
+export function newPageBlocks(pages: PagesConfig, title: string): Array<Record<string, unknown>> {
+	const template = pages.newPage?.length
+		? pages.newPage
+		: [
+				{ _type: "block", style: "h1", children: [{ _type: "span", text: "{{title}}" }] },
+				{ _type: "block", style: "normal", children: [{ _type: "span", text: "" }] },
+			];
+	let n = 0;
+	const key = () => `k${Date.now().toString(36)}${(n++).toString(36)}`;
+	const fill = (v: unknown, inArray: boolean): unknown => {
+		if (typeof v === "string") return v.split("{{title}}").join(title);
+		if (Array.isArray(v)) return v.map((x) => fill(x, true));
+		if (v && typeof v === "object") {
+			const out: Record<string, unknown> = {};
+			for (const [k, x] of Object.entries(v)) out[k] = fill(x, false);
+			// Items of arrays (blocks, spans, columns…) need keys; text blocks need markDefs.
+			if (inArray && !out._key) out._key = key();
+			if (out._type === "block" && !Array.isArray(out.markDefs)) out.markDefs = [];
+			if (out._type === "span" && !Array.isArray(out.marks)) out.marks = [];
+			return out;
+		}
+		return v;
+	};
+	return fill(template, false) as Array<Record<string, unknown>>;
 }
 
 /** A page's address. */

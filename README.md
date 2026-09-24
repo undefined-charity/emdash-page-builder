@@ -157,6 +157,13 @@ export const builderConfig: Partial<BuilderConfig> = {
     collection: "pages",
     protectedSlugs: ["home", "not-found"],
     urls: { home: "/", "not-found": "/404" },
+    // What + New page starts with. {{title}} becomes the title typed; keys are added.
+    newPage: [
+      { _type: "pb.section", variant: "hero", content: [
+        { _type: "block", style: "h1", children: [{ _type: "span", text: "{{title}}" }] },
+        { _type: "block", style: "lead", children: [{ _type: "span", text: "" }] },
+      ] },
+    ],
   },
   // Blocks your site renders on the server
   externalBlocks: [

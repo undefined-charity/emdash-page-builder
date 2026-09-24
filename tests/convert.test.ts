@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { docToPortableText } from "../src/convert/from-doc.ts";
 import { portableTextToDoc } from "../src/convert/to-doc.ts";
 import { renderDocument } from "../src/render/html.ts";
-import { pageUrl, resolveConfig } from "../src/schema/config.ts";
+import { newPageBlocks, pageUrl, resolveConfig } from "../src/schema/config.ts";
 import { slugify } from "../src/editor/Pages.tsx";
 import { anyThemeToCss, responsiveCss } from "../src/schema/style.ts";
 import { BUILT_IN_PRESETS, presetValues } from "../src/schema/presets.ts";
@@ -392,4 +392,25 @@ test("fit-to-width text round-trips and renders in container units, after its ow
 	assert.match(html, /style="font-size: 4\.763cqi; white-space: nowrap"/);
 	assert.match(html, /data-pb-fit=""/);
 	assert.equal(renderDocument([{ ...blocks[0], pbFit: "9cqi; color: red" }], config).parts.join("").includes("cqi"), false);
+});
+
+test("a new page starts from the site's template, titled, keyed and valid", () => {
+	const pages = resolveConfig({
+		pages: {
+			collection: "pages",
+			protectedSlugs: [],
+			urls: {},
+			newPage: [{ _type: "pb.section", variant: "hero", content: [{ _type: "block", style: "h1", children: [{ _type: "span", text: "{{title}}!" }] }] }],
+		},
+	}).pages;
+	const blocks = newPageBlocks(pages, "Summer Party");
+	const section = blocks[0] as { _key: string; content: Array<{ _key: string; markDefs: unknown[]; children: Array<{ _key: string; text: string; marks: unknown[] }> }> };
+	assert.ok(section._key && section.content[0]._key && section.content[0].children[0]._key);
+	assert.equal(section.content[0].children[0].text, "Summer Party!");
+	assert.deepEqual(section.content[0].markDefs, []);
+	// It renders like any page.
+	assert.match(renderDocument(blocks, config).parts.join(""), /<h1>Summer Party!<\/h1>/);
+	// Without a template: the title as a heading, then an empty line (a placeholder while editing, not text).
+	const plain = newPageBlocks(resolveConfig({}).pages, "About");
+	assert.equal((plain[1] as { children: Array<{ text: string }> }).children[0].text, "");
 });

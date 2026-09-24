@@ -7,7 +7,7 @@
  */
 import * as React from "react";
 
-import { pageUrl, type BuilderConfig } from "../schema/config.js";
+import { newPageBlocks, pageUrl, type BuilderConfig } from "../schema/config.js";
 import {
 	addMenuItem,
 	createEntry,
@@ -111,6 +111,7 @@ export function PagesPanel(props: PagesPanelProps) {
 				<div className="pb-pages__detail">
 					{adding ? (
 						<NewPage
+							config={config}
 							collection={collection}
 							urlOf={urlOf}
 							onCancel={() => setAdding(false)}
@@ -129,7 +130,19 @@ export function PagesPanel(props: PagesPanelProps) {
 	);
 }
 
-function NewPage({ collection, urlOf, onCancel, onCreated }: { collection: string; urlOf: (slug: string | null) => string | null; onCancel: () => void; onCreated: (url: string | null) => void }) {
+function NewPage({
+	config,
+	collection,
+	urlOf,
+	onCancel,
+	onCreated,
+}: {
+	config: BuilderConfig;
+	collection: string;
+	urlOf: (slug: string | null) => string | null;
+	onCancel: () => void;
+	onCreated: (url: string | null) => void;
+}) {
 	const [title, setTitle] = React.useState("");
 	const [busy, setBusy] = React.useState(false);
 	const [error, setError] = React.useState<string | null>(null);
@@ -138,11 +151,8 @@ function NewPage({ collection, urlOf, onCancel, onCreated }: { collection: strin
 		setBusy(true);
 		setError(null);
 		try {
-			// Something to start from: a heading with the title, then a paragraph.
-			const body = [
-				{ _type: "block", _key: "t", style: "h1", markDefs: [], children: [{ _type: "span", _key: "s", text: title, marks: [] }] },
-				{ _type: "block", _key: "p", style: "normal", markDefs: [], children: [{ _type: "span", _key: "s2", text: "Write something…", marks: [] }] },
-			];
+			// What the site starts its pages with (a heading and an empty line by default).
+			const body = newPageBlocks(config.pages, title);
 			const created = await createEntry(collection, { data: { title, body }, slug });
 			onCreated(urlOf(created.slug ?? slug));
 		} catch (e) {
