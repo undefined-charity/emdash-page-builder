@@ -256,7 +256,7 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 				<button type="button" title="Duplicate" onClick={() => duplicate(editor, live)}>
 					⧉
 				</button>
-				<button type="button" title="Save as a reusable block" onClick={() => onSaveReusable(live)}>
+				<button type="button" title="Save as a shared block" onClick={() => onSaveReusable(live)}>
 					♻
 				</button>
 				<button type="button" title="Delete" className="danger" onClick={() => confirmRemove(editor, live, blockLabel(live.node, (t) => config.externalBlocks.find((b) => b.type === t)?.label))}>
@@ -648,8 +648,8 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 			{type === "pbExternal" && <ExternalSettings config={config} block={live} set={set} onRefreshPreviews={onRefreshPreviews} />}
 
 			{type === "pbReusable" && (
-				<Group title="Reusable block">
-					<p className="pb-hint">This block is shared: editing it changes it everywhere it's used. Use the buttons on the block to edit the shared copy or detach this one.</p>
+				<Group title="Shared block">
+					<p className="pb-hint">This block is shared: editing it changes it on every page that uses it. Use the buttons on the block to edit the shared copy or detach this one.</p>
 				</Group>
 			)}
 

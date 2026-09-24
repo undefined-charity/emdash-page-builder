@@ -40,7 +40,7 @@ const LABELS: Record<string, string> = {
 	pbEmbed: "Embed",
 	pbShape: "Shape",
 	pbLayer: "Layer",
-	pbReusable: "Reusable block",
+	pbReusable: "Shared block",
 	pbExternal: "Site block",
 };
 

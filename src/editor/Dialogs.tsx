@@ -198,8 +198,8 @@ export function ReusableDialog({ collection, onPick, onClose }: { collection: st
 	// `site-*` entries are regions (the header, the footer), not snippets to drop into a page.
 	const shown = (entries ?? []).filter((e) => !e.slug?.startsWith("site-") && (!query || e.title.toLowerCase().includes(query.toLowerCase())));
 	return (
-		<Modal title="Insert a reusable block" onClose={onClose}>
-			<p className="pb-hint">A reusable block is shared: change it once and every page using it updates. Make one by selecting any block and choosing ♻ in the side panel.</p>
+		<Modal title="Insert a shared block" onClose={onClose}>
+			<p className="pb-hint">A shared block appears on every page that uses it: change it once and they all update. Make one by selecting any block and choosing ♻ in the side panel.</p>
 			<input type="search" placeholder="Search" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
 			{error && <p className="pb-error">{error}</p>}
 			{entries === null && !error && <p className="pb-hint">Loading…</p>}
@@ -213,7 +213,7 @@ export function ReusableDialog({ collection, onPick, onClose }: { collection: st
 					</li>
 				))}
 			</ul>
-			{entries?.length === 0 && <p className="pb-empty">No reusable blocks yet.</p>}
+			{entries?.length === 0 && <p className="pb-empty">No shared blocks yet.</p>}
 		</Modal>
 	);
 }

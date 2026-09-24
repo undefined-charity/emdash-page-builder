@@ -723,7 +723,7 @@ export function PageEditor(props: PageEditorProps) {
 				.insertContentAt({ from: block.pos, to: block.pos + node.nodeSize }, { type: "pbReusable", attrs: { ref, title: name, key: newKey() } })
 				.run();
 		} catch (e) {
-			alert(`Couldn't save the reusable block: ${e instanceof Error ? e.message : e}`);
+			alert(`Couldn't save the shared block: ${e instanceof Error ? e.message : e}`);
 		}
 	};
 
@@ -860,7 +860,7 @@ export function PageEditor(props: PageEditorProps) {
 			)}
 			{dialog?.kind === "saveReusable" && (
 				<PromptDialog
-					title="Save as a reusable block"
+					title="Save as a shared block"
 					label="Name"
 					confirm="Save and share"
 					onClose={() => setDialog(null)}

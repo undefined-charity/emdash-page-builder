@@ -328,8 +328,8 @@ export function insertItems(config: BuilderConfig): InsertItem[] {
 		),
 		{
 			id: "reusable",
-			label: "Reusable block…",
-			category: "Reusable",
+			label: "Shared block…",
+			category: "Shared",
 			icon: "♻",
 			description: "Insert a shared block — edit it once, it changes everywhere",
 			keywords: ["shared", "global", "snippet", "synced", "template"],

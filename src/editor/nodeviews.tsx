@@ -184,7 +184,7 @@ function makeExternalView(ctx: ViewContext) {
 function makeReusableView(ctx: ViewContext) {
 	return function ReusableView({ node, selected, editor, getPos }: NodeViewProps) {
 		const html = usePreview(node.attrs.key);
-		const title = node.attrs.title || ctx.reusableTitles[node.attrs.ref] || "Reusable block";
+		const title = node.attrs.title || ctx.reusableTitles[node.attrs.ref] || "Shared block";
 		const [busy, setBusy] = React.useState(false);
 
 		const detach = async () => {
