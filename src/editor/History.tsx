@@ -50,7 +50,15 @@ export function HistoryPanel({
 	const [busy, setBusy] = React.useState(false);
 
 	React.useEffect(() => {
-		Promise.all([listRevisions(collection, entryId), entryRevisions(collection, entryId), getVersionMarks(collection, entryId).catch(() => ({})), userNames()])
+		listRevisions(collection, entryId)
+			.then((revs) =>
+				Promise.all([
+					revs,
+					entryRevisions(collection, entryId),
+					getVersionMarks(collection, entryId).catch((): Record<string, VersionMark> => ({})),
+					userNames([...new Set(revs.map((r) => r.authorId).filter((id): id is string => Boolean(id)))]),
+				] as const),
+			)
 			.then(([revs, current, m, who]) => {
 				setRevisions(revs);
 				setIds(current);
@@ -83,7 +91,13 @@ export function HistoryPanel({
 		} else groups.push({ head: r, count: 1, from: when(r.createdAt) });
 	}
 	const shown = onlyMarked ? groups.filter((g) => g.head.id === ids.live || marks[g.head.id]) : groups;
-	const who = (id: string | null) => (id && id === people.me ? "You" : (id && people.names[id]) || "Someone");
+	const who = (id: string | null) => {
+		// Versions saved by a script or an import have no author.
+		if (!id) return "Author not recorded";
+		const name = people.names[id];
+		if (id === people.me) return name ? `${name} (you)` : "You";
+		return name ?? "Someone";
+	};
 	const fmt = (d: Date) => d.toLocaleString(undefined, { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
 	const mark = async (revisionId: string, patch: { name?: string | null; starred?: boolean }) => {

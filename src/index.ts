@@ -32,7 +32,7 @@ export type { ThemeToken, ThemeRole, BlockStyle, PageTheme } from "./schema/styl
 export type { ThemePreset } from "./schema/presets.js";
 
 const ID = "page-builder";
-const VERSION = "0.13.0";
+const VERSION = "0.13.1";
 const ADMIN_PAGES = [{ path: "/", label: "Page Builder", icon: "layout" }];
 
 export interface PageBuilderOptions {
@@ -55,7 +55,7 @@ export function pageBuilder(options: PageBuilderOptions = {}): PluginDescriptor 
 		// the content turns up.
 		componentsEntry: `${spec}/blocks`,
 		options: {},
-		capabilities: [],
+		capabilities: ["users:read"],
 		adminPages: ADMIN_PAGES,
 		// Replaces EmDash's own Portable Text editor on builder fields (set a
 		// field's widget to "page-builder:editor"): that editor doesn't know
@@ -135,11 +135,25 @@ async function markVersion(ctx: RouteContext<z.infer<typeof markInput>>) {
 	return { marks };
 }
 
+/** People's names by user id, for the History panel (editors can't list users themselves). */
+const peopleInput = z.object({ ids: z.array(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/)).max(100) });
+
+async function getPeople(ctx: RouteContext<z.infer<typeof peopleInput>>) {
+	const names: Record<string, string> = {};
+	const users = (ctx as unknown as { users?: { get(id: string): Promise<{ name: string | null; email: string } | null> } }).users;
+	for (const id of new Set(ctx.input.ids)) {
+		const user = await users?.get(id).catch(() => null);
+		// A name, or the part of the email before the @ (never the whole address).
+		if (user) names[id] = user.name?.trim() || user.email.split("@")[0];
+	}
+	return { names };
+}
+
 export function createPlugin(): ResolvedPlugin {
 	return definePlugin({
 		id: ID,
 		version: VERSION,
-		capabilities: [],
+		capabilities: ["users:read"],
 		routes: {
 			// Public: every page renders the site's design defaults.
 			"site-theme": { public: true, handler: getSiteTheme as never },
@@ -147,6 +161,7 @@ export function createPlugin(): ResolvedPlugin {
 			// Editors only (not public): version names, stars and publish times.
 			"history-get": { input: historyInput, handler: getHistory as never },
 			"history-mark": { input: markInput, handler: markVersion as never },
+			"people": { input: peopleInput, handler: getPeople as never },
 		},
 		admin: { pages: ADMIN_PAGES },
 	});

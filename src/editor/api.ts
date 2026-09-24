@@ -443,15 +443,9 @@ export async function markVersion(collection: string, id: string, revisionId: st
 	return data.marks ?? {};
 }
 
-/** People's names by user id, where this user may see them (and who "you" are). */
-export async function userNames(): Promise<{ me: string | null; names: Record<string, string> }> {
-	const me = await request<{ id?: string; name?: string | null; email?: string }>(`${API}/auth/me`).catch(() => null);
-	const names: Record<string, string> = {};
-	try {
-		const data = await request<{ items?: Array<{ id: string; name?: string | null; email?: string }> }>(`${API}/users?limit=100`);
-		for (const u of data.items ?? []) names[u.id] = u.name || u.email || "Someone";
-	} catch {
-		/* not allowed to list users: names stay unknown */
-	}
-	return { me: me?.id ?? null, names };
+/** The names of the people with these user ids (through the plugin: editors can't list users), and who "you" are. */
+export async function userNames(ids: string[]): Promise<{ me: string | null; names: Record<string, string> }> {
+	const me = await request<{ id?: string }>(`${API}/auth/me`).catch(() => null);
+	const data = ids.length ? await request<{ names?: Record<string, string> }>(`${PLUGIN}/people`, { method: "POST", body: JSON.stringify({ ids: ids.slice(0, 100) }) }).catch(() => null) : null;
+	return { me: me?.id ?? null, names: data?.names ?? {} };
 }
