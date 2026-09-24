@@ -101,11 +101,48 @@ export function blockStyleToCss(value: unknown): string | undefined {
 }
 
 /**
- * "Fit to width": the font size, in `cqi` of the block's container, at which
- * its line exactly fills the container (worked out by the editor).
+ * "Fit to width", as measured by the editor: the line's width is
+ * `k × font size + c` (the text grows with its size; padding and decoration
+ * the site adds around it may not). So the size at which it exactly fills
+ * its container is `(100cqi − c) / k`, at any width. `pk`/`pc`: the same on
+ * phones, where the site lays the block out differently.
  */
-export function cleanFit(v: unknown): number | undefined {
-	return typeof v === "number" && Number.isFinite(v) && v >= 0.5 && v <= 300 ? +v.toFixed(3) : undefined;
+export interface FitLine {
+	k: number;
+	c: number;
+	pk?: number;
+	pc?: number;
+}
+
+const fitNumber = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? +v.toFixed(4) : undefined);
+
+export function cleanFit(v: unknown): FitLine | undefined {
+	// Before 0.15: a single size in cqi, as if nothing was fixed.
+	if (typeof v === "number") {
+		const n = fitNumber(v, 0.5, 300);
+		return n ? { k: +(100 / n).toFixed(4), c: 0 } : undefined;
+	}
+	if (!v || typeof v !== "object") return undefined;
+	const o = v as Record<string, unknown>;
+	const k = fitNumber(o.k, 0.05, 100);
+	const c = fitNumber(o.c, -5000, 5000);
+	if (k === undefined || c === undefined) return undefined;
+	const pk = fitNumber(o.pk, 0.05, 100);
+	const pc = fitNumber(o.pc, -5000, 5000);
+	return { k, c, ...(pk !== undefined && pc !== undefined ? { pk, pc } : {}) };
+}
+
+/** A fitted block's attributes: its size for desktops (and phones), one line. */
+export function fitAttrs(value: unknown): Record<string, string> {
+	const fit = cleanFit(value);
+	if (!fit) return {};
+	// A hair under full width, so rounding never tips it into overflowing.
+	const size = (k: number, c: number) => `max(0.5rem, calc((99.5cqi - ${c}px) / ${k}))`;
+	const vars = [`--pb-fit: ${size(fit.k, fit.c)}`, ...(fit.pk !== undefined ? [`--pb-fit-phone: ${size(fit.pk, fit.pc!)}`] : [])];
+	return {
+		style: `${vars.join("; ")}; font-size: var(--pb-fit-now, var(--pb-fit)); white-space: nowrap; flex-wrap: nowrap`,
+		"data-pb-fit": fit.pk !== undefined ? "phone" : "",
+	};
 }
 
 // ── Phones ────────────────────────────────────────────────────────────────────
@@ -198,7 +235,7 @@ export function responsiveCss(breakpoint: number): string {
 	const live = ":not(.pb-editor-content *)";
 	const phone = PHONE_RULES.map(([name, css]) => `[data-pb-phone~="${name}"] { ${css} }`).join(" ");
 	return (
-		`@media (max-width: ${bp}px) { .pb-hide-phone${live} { display: none !important; } .pb-stack--phone-flow > .pb-layer { grid-area: auto; } ${phone} } ` +
+		`@media (max-width: ${bp}px) { .pb-hide-phone${live} { display: none !important; } .pb-stack--phone-flow > .pb-layer { grid-area: auto; } [data-pb-fit="phone"] { --pb-fit-now: var(--pb-fit-phone); } ${phone} } ` +
 		`@media (min-width: ${bp + 0.02}px) { .pb-hide-desktop${live} { display: none !important; } }`
 	);
 }

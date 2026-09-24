@@ -156,6 +156,23 @@ function emulateSheets() {
 	}
 }
 
+/**
+ * Run `fn` with the page's styles laid out for `layout` (a phone's, or the
+ * desktop's), whatever the editor is showing, then put them back. It all
+ * happens before the browser paints, so nothing flickers.
+ */
+export function withLayout<T>(layout: Device, fn: () => T): T {
+	if (layout === device) return fn();
+	if (layout === "phone") emulateSheets();
+	else restoreSheets();
+	try {
+		return fn();
+	} finally {
+		if (device === "phone") emulateSheets();
+		else restoreSheets();
+	}
+}
+
 function emulate() {
 	emulateSheets();
 	// Stylesheets added later (a lazily loaded component, or the dev server
@@ -167,6 +184,10 @@ function emulate() {
 
 function restore() {
 	observer?.disconnect();
+	restoreSheets();
+}
+
+function restoreSheets() {
 	for (const [rule, media] of originals) {
 		try {
 			rule.media.mediaText = media;

@@ -6,7 +6,7 @@ import { portableTextToDoc } from "../src/convert/to-doc.ts";
 import { renderDocument } from "../src/render/html.ts";
 import { newPageBlocks, pageUrl, resolveConfig } from "../src/schema/config.ts";
 import { slugify } from "../src/editor/Pages.tsx";
-import { anyThemeToCss, responsiveCss } from "../src/schema/style.ts";
+import { anyThemeToCss, cleanFit, responsiveCss } from "../src/schema/style.ts";
 import { BUILT_IN_PRESETS, presetValues } from "../src/schema/presets.ts";
 import { pageBackgroundCss, pageBackgroundVideo } from "../src/schema/background.ts";
 import { cleanAnimation, pageTransitionCss } from "../src/schema/animation.ts";
@@ -383,15 +383,23 @@ test("page transitions are CSS only, and off for reduced motion", () => {
 	assert.match(css, /^@media \(prefers-reduced-motion: no-preference\) \{ @view-transition \{ navigation: auto; \}/);
 });
 
-test("fit-to-width text round-trips and renders in container units, after its own size", () => {
-	const blocks = [{ _type: "block", _key: "h", style: "h1", pbStyle: { fontSize: "3rem" }, pbFit: 4.763, markDefs: [], children: [span("BAD DOG")] }];
+test("fit-to-width text round-trips and sizes itself to its container, with a phone size where needed", () => {
+	const fit = { k: 0.9, c: 120, pk: 0.95, pc: 40 };
+	const blocks = [{ _type: "block", _key: "h", style: "h1", pbStyle: { fontSize: "3rem" }, pbFit: fit, markDefs: [], children: [span("BAD DOG")] }];
 	const once = docToPortableText(portableTextToDoc(blocks, config), config);
 	assert.deepEqual(normalize(once), normalize(blocks));
 	const html = renderDocument(blocks, config).parts.join("");
-	// The fitted size replaces the block's own.
-	assert.match(html, /style="font-size: 4\.763cqi; white-space: nowrap"/);
-	assert.match(html, /data-pb-fit=""/);
-	assert.equal(renderDocument([{ ...blocks[0], pbFit: "9cqi; color: red" }], config).parts.join("").includes("cqi"), false);
+	// The fitted size replaces the block's own; phones get theirs through the responsive rules.
+	assert.match(html, /font-size: var\(--pb-fit-now, var\(--pb-fit\)\)/);
+	assert.ok(!html.includes("font-size: 3rem"), html);
+	assert.match(html, /--pb-fit: max\(0\.5rem, calc\(\(99\.5cqi - 120px\) \/ 0\.9\)\)/);
+	assert.match(html, /--pb-fit-phone: max\(0\.5rem, calc\(\(99\.5cqi - 40px\) \/ 0\.95\)\)/);
+	assert.match(html, /white-space: nowrap; flex-wrap: nowrap/);
+	assert.match(html, /data-pb-fit="phone"/);
+	assert.match(responsiveCss(640), /\[data-pb-fit="phone"\] \{ --pb-fit-now: var\(--pb-fit-phone\); \}/);
+	// A size saved by 0.12 (cqi only) still works, as if nothing were fixed.
+	assert.deepEqual(cleanFit(4), { k: 25, c: 0 });
+	assert.equal(renderDocument([{ ...blocks[0], pbFit: "9cqi; color: red" }], config).parts.join("").includes("pb-fit"), false);
 });
 
 test("a new page starts from the site's template, titled, keyed and valid", () => {
