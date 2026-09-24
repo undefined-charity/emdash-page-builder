@@ -19,6 +19,7 @@ export function TextInput(props: {
 	multiline?: boolean;
 	/** Commit on blur/Enter instead of every keystroke. */
 	lazy?: boolean;
+	autoFocus?: boolean;
 }) {
 	const [draft, setDraft] = React.useState(props.value);
 	React.useEffect(() => {
@@ -26,6 +27,7 @@ export function TextInput(props: {
 	}, [props.value]);
 	const commit = () => draft !== props.value && props.onChange(draft);
 	const common = {
+		autoFocus: props.autoFocus,
 		value: draft,
 		placeholder: props.placeholder,
 		onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -125,7 +127,8 @@ export function LengthField({
 	label: string;
 	value: string | undefined;
 	onChange: (v: string | undefined) => void;
-	presets: string[];
+	/** Quick picks: a value, or a value with the label to show for it (e.g. "20px" for "1.25rem"). */
+	presets: Array<string | { value: string; label: string }>;
 	placeholder?: string;
 }) {
 	return (
@@ -140,11 +143,14 @@ export function LengthField({
 			</span>
 			<TextInput value={value ?? ""} placeholder={placeholder ?? "default"} lazy onChange={(v) => onChange(v.trim() || undefined)} />
 			<div className="pb-chips">
-				{presets.map((p) => (
-					<button key={p} type="button" className={value === p ? "on" : ""} onClick={() => onChange(p)}>
-						{p}
-					</button>
-				))}
+				{presets.map((p) => {
+					const { value: v, label: l } = typeof p === "string" ? { value: p, label: p } : p;
+					return (
+						<button key={v} type="button" className={value === v ? "on" : ""} onClick={() => onChange(v)} title={l === v ? undefined : v}>
+							{l}
+						</button>
+					);
+				})}
 			</div>
 		</div>
 	);
@@ -160,14 +166,23 @@ export function Group({ title, children, defaultOpen = true }: { title: string; 
 }
 
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+	const panel = React.useRef<HTMLDivElement>(null);
 	React.useEffect(() => {
 		const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
 	}, [onClose]);
+	// Take the focus from the page: while a dialog is open, typing must not
+	// land in the document behind it. The first field, if any, gets it.
+	React.useEffect(() => {
+		const el = panel.current;
+		if (!el) return;
+		const first = el.querySelector<HTMLElement>("input:not([type=hidden]):not([type=file]), textarea, select");
+		(first ?? el).focus({ preventScroll: true });
+	}, []);
 	return (
 		<div className="pb-modal" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-			<div className={`pb-modal__panel${wide ? " pb-modal__panel--wide" : ""}`} role="dialog" aria-label={title}>
+			<div ref={panel} tabIndex={-1} className={`pb-modal__panel${wide ? " pb-modal__panel--wide" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
 				<header>
 					<h2>{title}</h2>
 					<button type="button" className="pb-icon" onClick={onClose} aria-label="Close">

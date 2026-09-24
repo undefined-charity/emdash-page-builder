@@ -63,6 +63,19 @@ export interface InspectorProps {
 	onRefreshPreviews: () => void;
 }
 
+/**
+ * Delete a block, asking first when it holds more than a line or two: a
+ * section with several blocks, columns, cards, a gallery. Undo still works.
+ */
+function confirmRemove(editor: Editor, ref: BlockRef, label: string) {
+	const node = ref.node;
+	const children = node.isTextblock ? 0 : node.childCount;
+	const text = node.textContent.trim();
+	const big = children > 1 || text.length > 240 || ["pbColumns", "pbCards", "pbGallery", "pbStack", "pbAccordion"].includes(node.type.name);
+	if (big && !window.confirm(`Delete this ${label.toLowerCase()} and everything in it? You can undo with ↶.`)) return;
+	remove(editor, ref);
+}
+
 export function Inspector(props: InspectorProps) {
 	const { editor, config } = props;
 	const [tab, setTab] = React.useState<"block" | "page" | "site">("block");
@@ -246,7 +259,7 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 				<button type="button" title="Save as a reusable block" onClick={() => onSaveReusable(live)}>
 					♻
 				</button>
-				<button type="button" title="Delete" className="danger" onClick={() => remove(editor, live)}>
+				<button type="button" title="Delete" className="danger" onClick={() => confirmRemove(editor, live, blockLabel(live.node, (t) => config.externalBlocks.find((b) => b.type === t)?.label))}>
 					🗑
 				</button>
 			</div>

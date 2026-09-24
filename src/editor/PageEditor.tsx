@@ -28,7 +28,7 @@ import { HistoryPanel } from "./History.js";
 import { sitePalette } from "./SitePanel.js";
 import { withNodeViews, previewStore } from "./nodeviews.js";
 import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
-import { claimIfFree, publishable, releaseIfActive, setActive, useIsActive, usePublishable } from "./registry.js";
+import { claimIfFree, onRefreshPreviews, publishable, refreshAllPreviews, releaseIfActive, setActive, useIsActive, usePublishable } from "./registry.js";
 import { fieldEdits, usePendingFieldEdits } from "./fields.js";
 import { addBlockRows, BLOCK_CONTAINERS, openLineAt } from "./addblock.js";
 import { DragDrop, startBlockDrag } from "./drag.js";
@@ -418,6 +418,10 @@ export function PageEditor(props: PageEditorProps) {
 		return () => document.removeEventListener("dragstart", onDragStart, true);
 	}, []);
 
+	// Another document (or the Pages panel) changed something this one's
+	// blocks show, such as a menu: fetch this document's previews again.
+	React.useEffect(() => onRefreshPreviews(() => void fetchSlotPreviews(props.rootId).then(previewStore.set).catch(() => undefined)), [props.rootId]);
+
 	// A page restored from the back/forward cache is a stale snapshot.
 	React.useEffect(() => {
 		const onShow = (e: PageTransitionEvent) => e.persisted && location.reload();
@@ -763,7 +767,7 @@ export function PageEditor(props: PageEditorProps) {
 					}}
 					onUseBackgroundElsewhere={() => setDialog({ kind: "copyBackground" })}
 					pageTab={!props.region && Boolean(props.themeField)}
-					onRefreshPreviews={() => void fetchSlotPreviews(props.rootId).then(previewStore.set).catch(() => undefined)}
+					onRefreshPreviews={refreshAllPreviews}
 					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}
 					onPickVideo={(onPick) => setDialog({ kind: "media", accept: "video", onPick })}
 					onAddBlock={(pos, anchor) => addBlockAt(pos, anchor)}

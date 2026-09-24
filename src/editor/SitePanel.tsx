@@ -160,12 +160,12 @@ export function TextStylesGroup({ config, theme, onTheme, palette }: SiteDesignP
 					<Select value={get("font") ?? ""} onChange={(v) => set("font", v || undefined)} options={[{ label: "Default", value: "" }, ...config.fonts]} />
 				</Field>
 			)}
-			<LengthField label="Size" value={get("size")} onChange={(v) => set("size", v)} presets={key.startsWith("h") ? ["1.25rem", "1.5rem", "2rem", "2.5rem", "3.5rem"] : ["0.875rem", "1rem", "1.125rem", "1.25rem"]} />
+			<LengthField label="Size" value={get("size")} onChange={(v) => set("size", v)} presets={key.startsWith("h") ? [{ value: "1.25rem", label: "20px" }, { value: "1.5rem", label: "24px" }, { value: "2rem", label: "32px" }, { value: "2.5rem", label: "40px" }, { value: "3.5rem", label: "56px" }] : [{ value: "0.875rem", label: "14px" }, { value: "1rem", label: "16px" }, { value: "1.125rem", label: "18px" }, { value: "1.25rem", label: "20px" }]} />
 			<Field label="Weight">
 				<Select value={get("weight") ?? ""} onChange={(v) => set("weight", v || undefined)} options={WEIGHTS} />
 			</Field>
 			<LengthField label="Line height" value={get("leading")} onChange={(v) => set("leading", v)} presets={["1", "1.2", "1.4", "1.6", "1.8"]} />
-			<LengthField label="Letter spacing" value={get("tracking")} onChange={(v) => set("tracking", v)} presets={["-0.02em", "0", "0.02em", "0.05em", "0.1em"]} />
+			<LengthField label="Letter spacing" value={get("tracking")} onChange={(v) => set("tracking", v)} presets={[{ value: "-0.02em", label: "Tight" }, { value: "0", label: "Normal" }, { value: "0.02em", label: "Wide" }, { value: "0.05em", label: "Wider" }, { value: "0.1em", label: "Widest" }]} />
 			<ColorField label="Colour" value={get("color")} onChange={(v) => set("color", v)} palette={palette} />
 			<Field label="Case">
 				<Select value={get("case") ?? ""} onChange={(v) => set("case", v || undefined)} options={CASES} />

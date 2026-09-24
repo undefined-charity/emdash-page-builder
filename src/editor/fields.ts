@@ -130,7 +130,7 @@ export function attachFieldEditing(container: HTMLElement): () => void {
 		el.contentEditable = "plaintext-only";
 		el.spellcheck = true;
 		el.classList.add("pb-ed-field");
-		el.title = "Click to edit. Saves to its own entry; publishes with the page.";
+		el.title = "Click to edit. This text belongs to what the block shows (an event, say); it goes live when you publish the page.";
 
 		const onFocus = () => {
 			original = el.textContent ?? "";

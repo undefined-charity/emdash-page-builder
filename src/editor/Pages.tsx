@@ -7,6 +7,7 @@
  */
 import * as React from "react";
 
+import { refreshAllPreviews } from "./registry.js";
 import { newPageBlocks, pageUrl, type BuilderConfig } from "../schema/config.js";
 import {
 	addMenuItem,
@@ -170,7 +171,7 @@ function NewPage({
 		>
 			<h3>New page</h3>
 			<Field label="Title">
-				<TextInput value={title} onChange={setTitle} placeholder="About us" />
+				<TextInput value={title} onChange={setTitle} placeholder="About us" autoFocus />
 			</Field>
 			<p className="pb-hint">{slug ? `Its address will be ${urlOf(slug)}. It opens here, unpublished, ready to edit.` : "It opens here, unpublished, ready to edit."}</p>
 			{error && <p className="pb-error">{error}</p>}
@@ -256,17 +257,28 @@ function PageSettings(props: PagesPanelProps & { page: EntrySummary; info: Colle
 		});
 
 	const unpublish = () => {
-		if (!confirm(`Unpublish “${title}”? Visitors won't see it until it's published again.`)) return;
+		if (!confirm(`Unpublish “${title}”? Visitors won't see it until it's published again, and its menu links are removed.`)) return;
 		void run("unpublish", async () => {
+			await dropFromMenus();
 			await unpublishEntry(collection, page.id);
 			setMessage({ kind: "ok", text: "Unpublished." });
 			props.onChanged();
 		});
 	};
 
+	// A page that's gone or hidden must not stay in the menus as a dead link.
+	const dropFromMenus = async () => {
+		if (!url) return;
+		for (const m of await listMenus().catch(() => [])) {
+			for (const id of await menuItemsLinking(m.name, url, page.id).catch(() => [])) await deleteMenuItem(m.name, id);
+		}
+		refreshAllPreviews();
+	};
+
 	const trash = () => {
-		if (!confirm(`Move “${title}” to the trash? It can be restored from the admin.`)) return;
+		if (!confirm(`Move “${title}” to the trash? Its menu links are removed too. It can be restored from the admin.`)) return;
 		void run("trash", async () => {
+			await dropFromMenus();
 			await trashEntry(collection, page.id);
 			if (isCurrent) location.assign(props.urlOf(config.pages.protectedSlugs[0] ?? "home") ?? "/");
 			props.onGone();
@@ -321,7 +333,7 @@ function PageSettings(props: PagesPanelProps & { page: EntrySummary; info: Colle
 			</div>
 			{message && <p className={message.kind === "error" ? "pb-error" : "pb-hint"}>{message.text}</p>}
 
-			{url && <MenuToggles pageId={page.id} url={url} label={title} />}
+			{url && <MenuToggles pageId={page.id} url={url} label={title} published={loaded?.status === "published"} />}
 
 			<h4>More</h4>
 			<div className="pb-row">
@@ -344,7 +356,7 @@ function PageSettings(props: PagesPanelProps & { page: EntrySummary; info: Colle
 }
 
 /** The menus this page is in, each a checkbox. Menus change immediately; they have no drafts. */
-function MenuToggles({ pageId, url, label }: { pageId: string; url: string; label: string }) {
+function MenuToggles({ pageId, url, label, published }: { pageId: string; url: string; label: string; published: boolean }) {
 	const [menus, setMenus] = React.useState<Array<{ name: string; label: string; items: string[] }> | null>(null);
 	const [busy, setBusy] = React.useState<string | null>(null);
 	const load = React.useCallback(async () => {
@@ -364,6 +376,7 @@ function MenuToggles({ pageId, url, label }: { pageId: string; url: string; labe
 				await addMenuItem(m.name, { label, url, sortOrder: (menu?.items.length ?? 0) + 1 });
 			}
 			await load();
+			refreshAllPreviews();
 		} catch (e) {
 			alert(`Couldn't change the menu: ${e instanceof Error ? e.message : e}`);
 		} finally {
@@ -373,10 +386,14 @@ function MenuToggles({ pageId, url, label }: { pageId: string; url: string; labe
 	return (
 		<>
 			<h4>Show in menus</h4>
-			<p className="pb-hint">Menus change straight away, for everyone. Rename or reorder their links from the menu block on the page.</p>
+			{published || menus.some((m) => m.items.length) ? (
+				<p className="pb-hint">Menus change straight away, for everyone. Rename or reorder their links from the menu block on the page.</p>
+			) : (
+				<p className="pb-hint">Publish the page first (the Publish button), then it can go in a menu. Otherwise the link would lead nowhere.</p>
+			)}
 			{menus.map((m) => (
 				<label key={m.name} className="pb-toggle">
-					<input type="checkbox" checked={m.items.length > 0} disabled={busy !== null} onChange={() => void toggle(m)} />
+					<input type="checkbox" checked={m.items.length > 0} disabled={busy !== null || (!published && !m.items.length)} onChange={() => void toggle(m)} />
 					<span>{m.label}</span>
 				</label>
 			))}

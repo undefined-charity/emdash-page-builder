@@ -78,3 +78,19 @@ export function usePublishable(): Map<string, PublishableDocument> {
 		() => documents,
 	);
 }
+
+// ── Refreshing every document's block previews ────────────────────────────────
+
+/**
+ * Site blocks render on the server, and their previews are fetched per
+ * document. A change that shows in another document's blocks (a menu edited
+ * from the Pages panel shows in the header's menu block) refreshes them all.
+ */
+const refreshListeners = new Set<() => void>();
+export function onRefreshPreviews(l: () => void): () => void {
+	refreshListeners.add(l);
+	return () => refreshListeners.delete(l);
+}
+export function refreshAllPreviews(): void {
+	refreshListeners.forEach((l) => l());
+}
