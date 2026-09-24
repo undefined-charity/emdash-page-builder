@@ -86,6 +86,21 @@ export function Toolbar({
 		},
 	});
 
+	// The ribbon wraps onto more rows in a narrow window; everything below it
+	// (the page, the side panel, the popovers) makes room for its real height.
+	const ribbon = React.useRef<HTMLDivElement>(null);
+	React.useEffect(() => {
+		const el = ribbon.current;
+		if (!el) return;
+		const root = document.documentElement.style;
+		const sized = new ResizeObserver(() => root.setProperty("--pb-ribbon-h", `${Math.ceil(el.getBoundingClientRect().height)}px`));
+		sized.observe(el);
+		return () => {
+			sized.disconnect();
+			root.removeProperty("--pb-ribbon-h");
+		};
+	}, []);
+
 	const [menu, setMenu] = React.useState<null | "insert" | "link" | "color" | "highlight">(null);
 	const c = () => editor.chain().focus();
 
@@ -99,7 +114,7 @@ export function Toolbar({
 	];
 
 	return (
-		<div className="pb-toolbar" role="toolbar" aria-label="Formatting">
+		<div className="pb-toolbar" role="toolbar" aria-label="Formatting" ref={ribbon}>
 			<div className="pb-toolbar__doc">
 				<strong title={title}>{title || "Page"}</strong>
 				<button type="button" className={`pb-status pb-status--${save.state}`} onClick={onSaveNow} title={save.error ?? "Save now (⌘S)"}>

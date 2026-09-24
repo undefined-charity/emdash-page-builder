@@ -35,7 +35,8 @@ function addRow(pos: number, onAdd: (pos: number, at: DOMRect) => void, label: s
 	);
 }
 
-export function addBlockRows(onAdd: (pos: number, at: DOMRect) => void) {
+/** `endLabel`: the row at the end of the document ("Add block to the page", "…to Site header"). */
+export function addBlockRows(onAdd: (pos: number, at: DOMRect) => void, endLabel = "Add block to the page") {
 	return Extension.create({
 		name: "pbAddBlockRows",
 		addProseMirrorPlugins() {
@@ -49,7 +50,7 @@ export function addBlockRows(onAdd: (pos: number, at: DOMRect) => void) {
 								if (BLOCK_CONTAINERS.includes(node.type.name)) decos.push(addRow(pos + node.nodeSize - 1, onAdd, "Add block"));
 								return true;
 							});
-							decos.push(addRow(state.doc.content.size, onAdd, "Add block to the page"));
+							decos.push(addRow(state.doc.content.size, onAdd, endLabel));
 							return DecorationSet.create(state.doc, decos);
 						},
 					},

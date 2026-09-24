@@ -183,7 +183,7 @@ export function PageEditor(props: PageEditorProps) {
 			...withNodeViews(builderExtensions(config), { config, reusableTitles: props.reusableTitles }),
 			DragDrop,
 			FitText,
-			addBlockRows((pos, at) => addBlockAtRef.current(pos, at)),
+			addBlockRows((pos, at) => addBlockAtRef.current(pos, at), props.region ? `Add block to ${props.region}` : props.embedded ? "Add block" : "Add block to the page"),
 			Placeholder.configure({
 				includeChildren: true,
 				showOnlyCurrent: true,
@@ -642,7 +642,7 @@ export function PageEditor(props: PageEditorProps) {
 			// browsers left at the 24px minimum.
 			body.boxSizing = "border-box";
 			body.width = `${PHONE_WIDTH}px`;
-			body.marginTop = "76px";
+			body.marginTop = "calc(var(--pb-ribbon-h, 52px) + 24px)";
 			body.marginBottom = "40px";
 			body.marginRight = "0";
 			centre = () => {
@@ -651,7 +651,7 @@ export function PageEditor(props: PageEditorProps) {
 			centre();
 			window.addEventListener("resize", centre);
 		} else {
-			body.paddingTop = "52px";
+			body.paddingTop = "var(--pb-ribbon-h, 52px)";
 			body.marginRight = `${panel}px`;
 		}
 		body.paddingBottom = inspectorOpen && narrow ? "45vh" : prev.paddingBottom;

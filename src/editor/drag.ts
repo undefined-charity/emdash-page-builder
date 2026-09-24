@@ -284,7 +284,7 @@ export function startBlockDrag(editor: Editor, pos: number, down: PointerEvent, 
 	// Scroll when the pointer is held near the top or bottom of the window.
 	const tick = () => {
 		if (!dragging) return;
-		const top = 70;
+		const top = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--pb-ribbon-h")) || 52) + 18;
 		const bottom = window.innerHeight - 50;
 		scroll = y < top ? -Math.ceil((top - y) / 4) : y > bottom ? Math.ceil((y - bottom) / 4) : 0;
 		if (scroll) {

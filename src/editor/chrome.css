@@ -83,21 +83,24 @@
 	resize: vertical;
 }
 
-/* ── Ribbon ── */
+/* ── Ribbon ──
+   Groups of commands stay together, like Word's; when the window is too
+   narrow for one row, whole groups move to the next. The ribbon's height
+   (--pb-ribbon-h, set by Toolbar.tsx) is what the page, the side panel and
+   the popovers make room for. */
 .pb-toolbar {
 	position: fixed;
 	inset: 0 0 auto 0;
-	height: 52px;
+	min-height: 52px;
 	z-index: 2147483000;
 	display: flex;
+	flex-wrap: wrap;
 	align-items: center;
-	gap: 6px;
-	padding: 0 10px;
+	gap: 6px 6px;
+	padding: 6px 10px;
 	background: var(--bg);
 	border-bottom: 1px solid var(--line);
 	box-shadow: 0 2px 12px rgb(0 0 0 / 0.35);
-	overflow-x: auto;
-	scrollbar-width: thin;
 }
 .pb-toolbar__doc {
 	display: flex;
@@ -130,6 +133,8 @@
 	margin-left: auto;
 	flex: none;
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	gap: 6px;
 	align-items: center;
 }
@@ -195,7 +200,7 @@
 }
 .pb-toolbar .pb-pop {
 	position: fixed;
-	top: 56px;
+	top: calc(var(--pb-ribbon-h, 52px) + 4px);
 	left: auto;
 }
 .pb-pop--link {
@@ -265,7 +270,7 @@
 /* ── Side panel ── */
 .pb-inspector {
 	position: fixed;
-	top: 52px;
+	top: var(--pb-ribbon-h, 52px);
 	right: 0;
 	bottom: 0;
 	width: 340px;
