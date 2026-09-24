@@ -28,6 +28,7 @@ interface Props {
 	config: BuilderConfig;
 	reusableTitles: Record<string, string>;
 	region?: string;
+	lead?: boolean;
 	/** The server-rendered document to take over, when it isn't found by id (embedded editors). */
 	root?: HTMLElement;
 }

@@ -207,7 +207,7 @@ function makeReusableView(ctx: ViewContext) {
 				<div className="pb-ed-atom__label" contentEditable={false}>
 					♻ {title}
 					<span className="pb-ed-atom__actions">
-						<a href={`/_emdash/admin/content/${ctx.config.reusableCollection}/${node.attrs.ref}`} target="_blank" rel="noreferrer">
+						<a href={`/?pb-block=${encodeURIComponent(node.attrs.ref)}`} target="_blank" rel="noreferrer" title="Opens the shared block on its own, to edit; every page using it changes">
 							Edit everywhere ↗
 						</a>
 						<button type="button" onClick={detach} disabled={busy}>

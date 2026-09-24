@@ -49,8 +49,8 @@ interface Props {
 	class?: string;
 }
 
-const { entry, config: partial, components = {}, nested = false, region, embedded = false, class: className } = Astro.props;
-let { value, theme } = Astro.props;
+const { config: partial, components = {}, nested = false, embedded = false, class: className } = Astro.props;
+let { value, theme, entry, region } = Astro.props;
 const config = resolveConfig(partial);
 
 const EDITOR_ROLE = 30;
@@ -58,6 +58,25 @@ const role = (Astro.locals as { user?: { role?: number } }).user?.role ?? 0;
 // `?pb-preview`: the editor's Preview. Edit mode serves every entry's latest
 // draft; this renders them as a visitor sees them, with no editor.
 const previewing = Astro.url.searchParams.has("pb-preview");
+// `?pb-block=<slug or id>`: a reusable block's "Live View". For an editor,
+// the page's own document becomes that shared block, on its own and
+// editable in place. Headers and footers (site-…) are on every page already,
+// so the page shows as usual.
+const blockParam = Astro.url.searchParams.get("pb-block");
+if (blockParam && entry && !nested && !region && !embedded && role >= EDITOR_ROLE && !blockParam.startsWith("site-")) {
+	try {
+		const { entry: shared } = await getEmDashEntry(config.reusableCollection, blockParam);
+		const data = shared?.data as { id?: string; title?: string; content?: unknown } | undefined;
+		if (data?.id) {
+			value = data.content;
+			theme = undefined;
+			region = `Shared block “${data.title ?? blockParam}”`;
+			entry = { collection: config.reusableCollection, id: data.id, field: "content", themeField: null, title: data.title };
+		}
+	} catch {
+		/* not found: show the page as usual */
+	}
+}
 // `?pb-preview&pb-revision=<id>`: an earlier version of this document, from
 // the editor's History (editors only).
 const revisionId = previewing ? Astro.url.searchParams.get("pb-revision") : null;
@@ -117,6 +136,8 @@ const islandProps =
 				config,
 				reusableTitles: Object.fromEntries([...reusable].map(([ref, v]) => [ref, v?.title ?? ""])),
 				region,
+				// The page's main document takes the ribbon first, even when it's a shared block (?pb-block).
+				lead: !Astro.props.region && !embedded,
 			}
 		: null;
 ---

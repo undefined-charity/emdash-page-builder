@@ -56,7 +56,7 @@ import pageBuilder from "emdash-page-builder";
 emdash({ plugins: [pageBuilder()] });
 ```
 
-Open **Plugins → Page Builder** in the admin and click **Set up what's missing**: it creates the *Reusable blocks* collection and adds a `theme` field to your pages collection.
+Open **Plugins → Page Builder** in the admin and click **Set up what's missing**: it creates the *Reusable blocks* collection, adds a `theme` field to your pages collection, and points reusable blocks' **Live View** at the site (`/?pb-block=<slug>`), where an editor sees that shared block on its own and edits it in place. A block's **Edit everywhere ↗** link opens the same view.
 
 ## Use it in a template
 

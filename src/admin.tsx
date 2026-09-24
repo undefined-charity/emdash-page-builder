@@ -7,6 +7,13 @@ import { apiFetch } from "emdash/plugin-utils";
 import * as React from "react";
 
 const REUSABLE = "reusable_blocks";
+/**
+ * Where "Live View" takes a reusable block: any page of the site, with this
+ * marker, which PageBuilder turns into that block on its own, editable in
+ * place. (Without a pattern EmDash links to /reusable_blocks/<slug>, which
+ * doesn't exist.)
+ */
+export const REUSABLE_URL_PATTERN = "/?pb-block={slug}";
 
 async function api<T = unknown>(path: string, init?: RequestInit): Promise<{ ok: boolean; status: number; data?: T; error?: string }> {
 	const res = await apiFetch(`/_emdash/api${path}`, {
@@ -31,7 +38,7 @@ function PageBuilderAdmin() {
 	const [busy, setBusy] = React.useState(false);
 
 	const run = React.useCallback(async () => {
-		const reusable = await api<{ item?: { fields?: Array<{ slug: string }> } }>(`/schema/collections/${REUSABLE}?includeFields=true`);
+		const reusable = await api<{ item?: { fields?: Array<{ slug: string }>; urlPattern?: string | null } }>(`/schema/collections/${REUSABLE}?includeFields=true`);
 		const pages = await api<{ item?: { fields?: Array<{ slug: string }> } }>(`/schema/collections/${pagesCollection}?includeFields=true`);
 		const reusableFields = new Set((reusable.data?.item?.fields ?? []).map((f) => f.slug));
 		const pageFields = new Set((pages.data?.item?.fields ?? []).map((f) => f.slug));
@@ -56,6 +63,15 @@ function PageBuilderAdmin() {
 						const r = await api(`/schema/collections/${REUSABLE}/fields`, { method: "POST", body: JSON.stringify({ slug, type, label }) });
 						if (!r.ok) throw new Error(r.error ?? `Couldn't add the ${slug} field`);
 					}
+				},
+			},
+			{
+				id: "reusable-live-view",
+				label: "“Live View” on a reusable block opens it on the site, ready to edit",
+				done: reusable.ok && reusable.data?.item?.urlPattern === REUSABLE_URL_PATTERN,
+				fix: async () => {
+					const r = await api(`/schema/collections/${REUSABLE}`, { method: "PUT", body: JSON.stringify({ urlPattern: REUSABLE_URL_PATTERN }) });
+					if (!r.ok) throw new Error(r.error ?? "Couldn't set where Live View goes");
 				},
 			},
 			{
@@ -159,8 +175,8 @@ function BuilderField({ value, label }: { value: unknown; label?: string; id?: s
 		<div style={{ border: "1px solid rgba(127,127,127,0.35)", borderRadius: 8, padding: "12px 14px", lineHeight: 1.5 }}>
 			<div style={{ fontWeight: 600, marginBottom: 4 }}>{label ?? "Content"}</div>
 			<p style={{ margin: "0 0 8px" }}>
-				Built in the page builder. Open it on the site with <strong>Live View</strong>, switch on <strong>Edit</strong> in the toolbar, and edit it
-				there. It isn't edited here, so this form can't change or damage it.
+				Built in the page builder. Open it on the site with <strong>Live View</strong> (for a header or footer, any page), switch on{" "}
+				<strong>Edit</strong> in the toolbar, and edit it there. It isn't edited here, so this form can't change or damage it.
 			</p>
 			<p style={{ margin: 0, opacity: 0.75, fontSize: "0.9em" }}>
 				{blocks.length === 0 ? "Empty so far." : `${blocks.length} top-level block${blocks.length === 1 ? "" : "s"}${headings.length ? ` — ${headings.slice(0, 5).join(" · ")}${headings.length > 5 ? " …" : ""}` : ""}.`}

@@ -57,6 +57,8 @@ export interface PageEditorProps {
 	region?: string;
 	/** Rendered inside a block of another editable document (see PageBuilder's `embedded`). */
 	embedded?: boolean;
+	/** The page's main document, which takes the ribbon first. */
+	lead?: boolean;
 }
 
 const AUTOSAVE_MS = 1200;
@@ -183,7 +185,7 @@ export function PageEditor(props: PageEditorProps) {
 			...withNodeViews(builderExtensions(config), { config, reusableTitles: props.reusableTitles }),
 			DragDrop,
 			FitText,
-			addBlockRows((pos, at) => addBlockAtRef.current(pos, at), props.region ? `Add block to ${props.region}` : props.embedded ? "Add block" : "Add block to the page"),
+			addBlockRows((pos, at) => addBlockAtRef.current(pos, at), props.region && !props.lead ? `Add block to ${props.region}` : props.embedded || props.region ? "Add block" : "Add block to the page"),
 			Placeholder.configure({
 				includeChildren: true,
 				showOnlyCurrent: true,
@@ -354,7 +356,7 @@ export function PageEditor(props: PageEditorProps) {
 	// The page's own document takes the ribbon first; regions take it when
 	// clicked into. A region mounting early waits briefly so the page wins.
 	React.useEffect(() => {
-		const t = setTimeout(() => claimIfFree(props.rootId), props.region ? 200 : 0);
+		const t = setTimeout(() => claimIfFree(props.rootId), props.region && !props.lead ? 200 : 0);
 		return () => {
 			clearTimeout(t);
 			releaseIfActive(props.rootId);
@@ -708,7 +710,7 @@ export function PageEditor(props: PageEditorProps) {
 			<Toolbar
 				editor={editor}
 				config={chromeConfig}
-				title={props.region ? `${props.region} — every page` : props.title}
+				title={props.region ? `${props.region} — ${props.lead ? "every page that uses it" : "every page"}` : props.title}
 				save={save}
 				onSaveNow={() => void flush()}
 				onResolveConflict={(keep) => void resolveConflict(keep)}
