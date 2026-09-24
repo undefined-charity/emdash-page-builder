@@ -30,6 +30,7 @@ import { withNodeViews, previewStore } from "./nodeviews.js";
 import { getDevice, PHONE_WIDTH, setDevice, useDevice } from "./device.js";
 import { claimIfFree, releaseIfActive, setActive, useIsActive } from "./registry.js";
 import { fieldEdits, usePendingFieldEdits } from "./fields.js";
+import { addBlockRows, BLOCK_CONTAINERS, openLineAt } from "./addblock.js";
 import { DragDrop, startBlockDrag } from "./drag.js";
 import { FitText, stepTextSize } from "./textsize.js";
 import { selectBlock, type BlockRef } from "./structure.js";
@@ -122,6 +123,49 @@ export function PageEditor(props: PageEditorProps) {
 	const onHandleNode = React.useCallback(({ node, pos }: { node: { nodeSize: number } | null; pos: number }) => {
 		hovered.current = node ? { pos, size: node.nodeSize } : null;
 	}, []);
+	const handleEl = React.useRef<HTMLDivElement>(null);
+	/**
+	 * Where the handle goes: beside the block, but for a block inside a
+	 * section, column or card, never outside that container. Where its
+	 * padding is too narrow the handle overlaps the block's left edge
+	 * instead, so it can always be reached without leaving the container.
+	 */
+	const handleReference = React.useCallback(() => {
+		const ed = editorRef.current;
+		const h = hovered.current;
+		if (!ed || !h) return null;
+		const dom = ed.view.nodeDOM(h.pos);
+		if (!(dom instanceof HTMLElement)) return null;
+		const rect = dom.getBoundingClientRect();
+		const $at = ed.state.doc.resolve(h.pos);
+		if ($at.depth === 0) return { getBoundingClientRect: () => rect };
+		const parent = ed.view.nodeDOM($at.before($at.depth));
+		if (!(parent instanceof HTMLElement)) return { getBoundingClientRect: () => rect };
+		const inner = parent.getBoundingClientRect().left + (parseFloat(getComputedStyle(parent).borderLeftWidth) || 0);
+		const width = handleEl.current?.offsetWidth || 52;
+		const left = Math.max(rect.left, inner + width + 2);
+		return { getBoundingClientRect: () => new DOMRect(left, rect.top, rect.width - (left - rect.left), rect.height) };
+	}, []);
+	/** Hold the handle on its block while the pointer is on it (it would follow the pointer away otherwise). */
+	const lockHandle = (locked: boolean) => editorRef.current?.view.dispatch(editorRef.current.state.tr.setMeta("lockDragHandle", locked).setMeta("addToHistory", false));
+	/** The handle's "+": an empty line below the block (or, for a column or card, at its end) with the insert menu. */
+	const addAfterHovered = (anchor: DOMRect) => {
+		const ed = editorRef.current;
+		const h = hovered.current;
+		if (!ed || !h) return;
+		const node = ed.state.doc.nodeAt(h.pos);
+		const rect = openLineAt(ed, h.pos + h.size) ?? (node && BLOCK_CONTAINERS.includes(node.type.name) ? openLineAt(ed, h.pos + h.size - 1) : null);
+		if (rect) setPlus({ x: anchor.right + 6, y: Math.max(rect.top, anchor.top) });
+	};
+	/** An empty line at `pos` with the insert menu beside it (the "Add block" rows and the side panel). */
+	const addBlockAt = (pos: number, anchor?: DOMRect) => {
+		const ed = editorRef.current;
+		if (!ed) return;
+		const rect = openLineAt(ed, pos);
+		if (rect) setPlus({ x: (anchor ?? rect).left, y: (anchor ?? rect).bottom + 4 });
+	};
+	const addBlockAtRef = React.useRef(addBlockAt);
+	addBlockAtRef.current = addBlockAt;
 
 	const ctx: InsertContext = {
 		config,
@@ -139,6 +183,7 @@ export function PageEditor(props: PageEditorProps) {
 			...withNodeViews(builderExtensions(config), { config, reusableTitles: props.reusableTitles }),
 			DragDrop,
 			FitText,
+			addBlockRows((pos, at) => addBlockAtRef.current(pos, at)),
 			Placeholder.configure({
 				includeChildren: true,
 				showOnlyCurrent: true,
@@ -335,6 +380,32 @@ export function PageEditor(props: PageEditorProps) {
 			dom.removeEventListener("focusin", claim);
 		};
 	}, [editor, props.rootId]);
+
+	// Hover intent: the handle follows the block under the pointer, and it
+	// sits to the block's left, so on the way to it the pointer crosses the
+	// block's container, which would take the handle over. While the pointer
+	// is on that path (the handle's height, from the handle to just inside
+	// the block), the handle stays with the block it's heading for.
+	React.useEffect(() => {
+		if (!editor) return;
+		const host = editor.view.dom.parentElement;
+		const onMove = (e: MouseEvent) => {
+			if (e.buttons) return;
+			const h = hovered.current;
+			const handle = handleEl.current;
+			if (!h || !handle || handle.parentElement?.style.visibility === "hidden") return;
+			const dom = editor.view.nodeDOM(h.pos);
+			if (!(dom instanceof HTMLElement)) return;
+			const block = dom.getBoundingClientRect();
+			const r = handle.getBoundingClientRect();
+			if (!r.width) return;
+			const top = Math.min(r.top, block.top) - 8;
+			const bottom = Math.max(r.bottom, block.top + Math.min(block.height, 40)) + 8;
+			if (e.clientX >= r.left - 8 && e.clientX <= Math.max(block.left, r.right) + 16 && e.clientY >= top && e.clientY <= bottom) e.stopPropagation();
+		};
+		host?.addEventListener("mousemove", onMove, true);
+		return () => host?.removeEventListener("mousemove", onMove, true);
+	}, [editor]);
 
 	// Blocks move with the handle's own drag (drag.ts), never the browser's.
 	React.useEffect(() => {
@@ -675,6 +746,7 @@ export function PageEditor(props: PageEditorProps) {
 					onRefreshPreviews={() => void fetchSlotPreviews(props.rootId).then(previewStore.set).catch(() => undefined)}
 					onPickImage={(onPick) => setDialog({ kind: "media", onPick })}
 					onPickVideo={(onPick) => setDialog({ kind: "media", accept: "video", onPick })}
+					onAddBlock={(pos, anchor) => addBlockAt(pos, anchor)}
 					onPickImages={(onPickMany) => setDialog({ kind: "media", onPick: () => undefined, onPickMany })}
 					onSaveReusable={(block) => setDialog({ kind: "saveReusable", block })}
 					onClose={() => setInspectorOpen(false)}
@@ -780,19 +852,16 @@ export function PageEditor(props: PageEditorProps) {
 				editor={editor}
 				nested
 				onNodeChange={onHandleNode}
+				getReferencedVirtualElement={handleReference}
 			>
-				<div className="pb-handle">
+				<div className="pb-handle" ref={handleEl} onMouseEnter={() => lockHandle(true)} onMouseLeave={() => lockHandle(false)}>
 					<button
 						type="button"
 						className="pb-handle__add"
 						title="Add a block below"
 						onClick={(e) => {
-							const h = hovered.current;
-							if (!h) return;
-							const at = h.pos + h.size;
-							editor.chain().insertContentAt(at, { type: "paragraph" }).setTextSelection(at + 1).run();
-							const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-							setPlus({ x: r.right + 6, y: r.top });
+							lockHandle(false);
+							addAfterHovered((e.currentTarget as HTMLElement).getBoundingClientRect());
 						}}
 					>
 						+

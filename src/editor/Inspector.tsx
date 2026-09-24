@@ -13,6 +13,7 @@ import { cleanGalleryImages, videoSource, type GalleryImage } from "../schema/me
 import type { PageBackground } from "../schema/background.js";
 import { BackgroundGroup } from "./BackgroundPanel.js";
 import { ANIM_EFFECTS, ANIM_FROM, cleanAnimation, type AnimEffect, type BlockAnimation } from "../schema/animation.js";
+import { BLOCK_CONTAINERS } from "./addblock.js";
 import { useDevice } from "./device.js";
 import { PaletteGroup, PresetsGroup, TextStylesGroup, type SiteDesignProps } from "./SitePanel.js";
 import { loadOptions } from "./api.js";
@@ -50,6 +51,8 @@ export interface InspectorProps {
 	onPageBackground: (bg: PageBackground | undefined) => void;
 	onUseBackgroundElsewhere: () => void;
 	onPickImage: (onPick: (attrs: Record<string, unknown>) => void) => void;
+	/** Add an empty line at a position and open the insert menu on it. */
+	onAddBlock: (pos: number, anchor: DOMRect) => void;
 	onPickVideo: (onPick: (attrs: Record<string, unknown>) => void) => void;
 	onPickImages: (onPick: (list: Array<Record<string, unknown>>) => void) => void;
 	onSaveReusable: (ref: BlockRef) => void;
@@ -216,7 +219,7 @@ export function Inspector(props: InspectorProps) {
 
 // ── Block settings ────────────────────────────────────────────────────────────
 
-function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickImages, onSaveReusable, onRefreshPreviews }: InspectorProps & { block: BlockRef }) {
+function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickImages, onSaveReusable, onRefreshPreviews, onAddBlock }: InspectorProps & { block: BlockRef }) {
 	const live = refresh(editor, block) ?? block;
 	const node = live.node;
 	const a = node.attrs as Record<string, unknown>;
@@ -247,6 +250,7 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 					🗑
 				</button>
 			</div>
+			<AddButtons editor={editor} block={live} onAdd={onAddBlock} />
 
 			{(type === "paragraph" || type === "heading") && <TextSettings editor={editor} config={config} block={live} phone={phone} phoneAlign={phoneStyle.textAlign} onPhoneAlign={(textAlign) => setPhone({ textAlign })} />}
 
@@ -871,6 +875,46 @@ const pick = (v: BlockStyle): BlockStyle => Object.fromEntries(STYLE_KEYS.filter
 
 /** How a desktop image position looks on a phone (floats stop wrapping on narrow screens). */
 const PHONE_IMAGE_ALIGN: Record<string, string> = { left: "none", right: "none" };
+
+// ── Adding blocks around the selected one ─────────────────────────────────────
+
+/** Add before, inside (for containers) and after the block, wherever a block can go. */
+function AddButtons({ editor, block, onAdd }: { editor: Editor; block: BlockRef; onAdd: (pos: number, anchor: DOMRect) => void }) {
+	const { doc, schema } = editor.state;
+	const $at = doc.resolve(block.pos);
+	const node = block.node;
+	const paragraph = schema.nodes.paragraph;
+	const fits = (pos: number) => {
+		const $p = doc.resolve(pos);
+		return $p.parent.canReplaceWith($p.index(), $p.index(), paragraph);
+	};
+	// The answer of a question, not the question itself.
+	const inside =
+		BLOCK_CONTAINERS.includes(node.type.name) ? block.pos + node.nodeSize - 1 : node.type.name === "pbAccordionItem" ? block.pos + node.nodeSize - 2 : null;
+	const before = $at.depth >= 0 && fits(block.pos) ? block.pos : null;
+	const after = fits(block.pos + node.nodeSize) ? block.pos + node.nodeSize : null;
+	if (before === null && after === null && inside === null) return null;
+	const add = (pos: number) => (e: React.MouseEvent<HTMLButtonElement>) => onAdd(pos, e.currentTarget.getBoundingClientRect());
+	return (
+		<div className="pb-actions pb-actions--add">
+			{before !== null && (
+				<button type="button" title="Add a block before this one" onClick={add(before)}>
+					＋ Before
+				</button>
+			)}
+			{inside !== null && (
+				<button type="button" title="Add a block at the end of this one" onClick={add(inside)}>
+					＋ Inside
+				</button>
+			)}
+			{after !== null && (
+				<button type="button" title="Add a block after this one" onClick={add(after)}>
+					＋ After
+				</button>
+			)}
+		</div>
+	);
+}
 
 // ── Entrance animation ────────────────────────────────────────────────────────
 

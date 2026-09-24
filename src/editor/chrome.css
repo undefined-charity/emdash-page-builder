@@ -1021,3 +1021,6 @@
 	border: 0;
 	background: #fff;
 }
+.pb-actions--add button {
+	font-size: 12px;
+}

@@ -370,3 +370,35 @@ html.pb-dragging .pb-handle {
 	padding: 4px 8px;
 	border-radius: 999px;
 }
+
+/* "Add block" rows (addblock.ts): faint at the end of every container and
+   of the page, clear on hover. */
+.pb-editor-content .pb-add-row {
+	all: unset;
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	margin: 0.25rem 0;
+	padding: 0.2rem 0.6rem;
+	border: 1px dashed rgb(124 156 255 / 0.45);
+	border-radius: 6px;
+	font: 12px/1.6 system-ui, sans-serif;
+	color: #7c9cff;
+	text-align: center;
+	cursor: pointer;
+	opacity: 0.35;
+	transition: opacity 120ms;
+	user-select: none;
+}
+.pb-editor-content :is(.pb-section, .pb-column, .pb-card, .pb-accordion__body, .pb-layer, .pb-section__body):hover > .pb-add-row,
+.pb-editor-content:hover > .pb-add-row,
+.pb-editor-content .pb-add-row:focus-visible {
+	opacity: 1;
+}
+.pb-editor-content .pb-add-row:hover {
+	background: rgb(124 156 255 / 0.12);
+}
+/* A layer's empty space lets clicks through to the layers behind it; not its row. */
+.pb-editor-content .pb-layer > .pb-add-row {
+	pointer-events: auto;
+}
