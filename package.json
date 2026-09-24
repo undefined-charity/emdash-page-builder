@@ -1,64 +1,70 @@
 {
-  "name": "emdash-page-builder",
-  "version": "0.16.0",
-  "description": "Word-processor-style, on-page editing for EmDash CMS: edit pages in place in the live site's own styles, insert blocks with /, drag to reorder, wrap text around images, build layouts from sections, columns, cards and FAQs, reuse blocks, and override any colour, font or size per block, per page or site-wide",
-  "type": "module",
-  "exports": {
-    ".": "./src/index.ts",
-    "./astro": "./src/astro/index.ts",
-    "./admin": "./src/admin.tsx",
-    "./blocks": "./src/astro/blocks/index.ts"
-  },
-  "files": [
-    "src",
-    "README.md",
-    "LICENSE"
-  ],
-  "keywords": [
-    "emdash",
-    "emdash-plugin",
-    "cms",
-    "page-builder",
-    "wysiwyg",
-    "visual-editing",
-    "astro"
-  ],
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/undefined-charity/emdash-page-builder.git"
-  },
-  "peerDependencies": {
-    "astro": ">=6.0.0",
-    "emdash": ">=0.32.0",
-    "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
-  },
-  "dependencies": {
-    "@tiptap/core": "^3.29.2",
-    "@tiptap/extension-drag-handle-react": "^3.29.2",
-    "@tiptap/extension-placeholder": "^3.29.2",
-    "@tiptap/extension-text-align": "^3.29.2",
-    "@tiptap/extension-text-style": "^3.29.2",
-    "@tiptap/pm": "^3.29.2",
-    "@tiptap/react": "^3.29.2",
-    "@tiptap/starter-kit": "^3.29.2",
-    "@tiptap/static-renderer": "^3.29.2",
-    "@tiptap/suggestion": "^3.29.2",
-    "zod": "^4.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "astro": "^7.0.0",
-    "emdash": "^0.32.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tsx": "^4.0.0",
-    "typescript": "^5.5.0"
-  },
-  "scripts": {
-    "test": "tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
-  }
+	"name": "emdash-page-builder",
+	"version": "0.16.0",
+	"description": "Word-processor-style, on-page editing for EmDash CMS: edit pages in place in the live site's own styles, insert blocks with /, drag to reorder, wrap text around images, build layouts from sections, columns, cards and FAQs, reuse blocks, and override any colour, font or size per block, per page or site-wide",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./astro": "./src/astro/index.ts",
+		"./admin": "./src/admin.tsx",
+		"./blocks": "./src/astro/blocks/index.ts"
+	},
+	"files": [
+		"src",
+		"README.md",
+		"LICENSE"
+	],
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"cms",
+		"page-builder",
+		"wysiwyg",
+		"visual-editing",
+		"astro"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/undefined-charity/emdash-page-builder.git"
+	},
+	"peerDependencies": {
+		"astro": ">=6.0.0",
+		"emdash": ">=0.32.0",
+		"react": "^18.0.0 || ^19.0.0",
+		"react-dom": "^18.0.0 || ^19.0.0",
+		"@emdash-cms/admin": ">=0.39.0"
+	},
+	"dependencies": {
+		"@tiptap/core": "^3.29.2",
+		"@tiptap/extension-drag-handle-react": "^3.29.2",
+		"@tiptap/extension-placeholder": "^3.29.2",
+		"@tiptap/extension-text-align": "^3.29.2",
+		"@tiptap/extension-text-style": "^3.29.2",
+		"@tiptap/pm": "^3.29.2",
+		"@tiptap/react": "^3.29.2",
+		"@tiptap/starter-kit": "^3.29.2",
+		"@tiptap/static-renderer": "^3.29.2",
+		"@tiptap/suggestion": "^3.29.2",
+		"zod": "^4.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"@types/react": "^19.0.0",
+		"astro": "^7.0.0",
+		"emdash": "^0.32.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"tsx": "^4.0.0",
+		"typescript": "^5.5.0"
+	},
+	"scripts": {
+		"test": "tsx --test tests/*.test.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"peerDependenciesMeta": {
+		"@emdash-cms/admin": {
+			"optional": true
+		}
+	}
 }

@@ -2,6 +2,7 @@
  * Plugins → Page Builder: how to use it, and one-click setup of the schema it
  * relies on (the reusable-blocks collection, and a theme field on pages).
  */
+import { PortableTextEditor } from "@emdash-cms/admin";
 import type { PluginAdminExports } from "emdash";
 import { apiFetch } from "emdash/plugin-utils";
 import * as React from "react";
@@ -157,8 +158,79 @@ export const pages: PluginAdminExports["pages"] = { "/": PageBuilderAdmin };
  * placeholder text and saves the result. This widget never changes the value;
  * it says where the content is edited and summarises it.
  */
-function BuilderField({ value, label }: { value: unknown; label?: string; id?: string }) {
+/** What EmDash's own editor writes and the builder renders: text, pictures, breaks. */
+const SIMPLE_TYPES = new Set(["block", "image", "break"]);
+
+interface FieldWidgetProps {
+	value: unknown;
+	onChange?: (value: unknown) => void;
+	label?: string;
+	id?: string;
+	minimal?: boolean;
+}
+
+/** The public page for the entry this form edits, from the admin URL + the collection's URL pattern. */
+function usePageUrl(): string | null {
+	const [url, setUrl] = React.useState<string | null>(null);
+	React.useEffect(() => {
+		const m = window.location.pathname.match(/\/content\/([^/]+)\/([^/]+)/);
+		if (!m) return;
+		const [, collection, id] = m;
+		let live = true;
+		(async () => {
+			const [c, e] = await Promise.all([
+				apiFetch(`/_emdash/api/schema/collections/${collection}`).then((r) => r.json()).catch(() => null),
+				apiFetch(`/_emdash/api/content/${collection}/${id}`).then((r) => r.json()).catch(() => null),
+			]);
+			const pattern = (c as { data?: { item?: { urlPattern?: string } } })?.data?.item?.urlPattern;
+			const slug = (e as { data?: { item?: { slug?: string } } })?.data?.item?.slug;
+			if (live && pattern && slug) setUrl(pattern.replace("{slug}", slug));
+		})();
+		return () => {
+			live = false;
+		};
+	}, []);
+	return url;
+}
+
+/**
+ * The admin form's view of a field the page builder owns. Plain text and
+ * pictures are edited right here with EmDash's editor; once the content has
+ * builder layout (sections, columns, cards, site blocks…) the form shows what
+ * is there and sends the editor to the page, where it can be edited safely.
+ */
+function BuilderField({ value, onChange, label, id }: FieldWidgetProps) {
 	const blocks = Array.isArray(value) ? (value as Array<Record<string, unknown>>) : [];
+	const simple = blocks.every((b) => SIMPLE_TYPES.has(String(b?._type ?? "")));
+	const pageUrl = usePageUrl();
+	const pageLink = pageUrl ? (
+		<a href={pageUrl} target="_blank" rel="noopener">
+			Open the page →
+		</a>
+	) : null;
+
+	if (simple) {
+		return (
+			<div>
+				{label && (
+					<div id={id ? `${id}-label` : undefined} style={{ fontWeight: 600, marginBottom: 6 }}>
+						{label}
+					</div>
+				)}
+				<PortableTextEditor
+					value={blocks as never}
+					onChange={(next) => onChange?.(next)}
+					placeholder="Write here…"
+					aria-labelledby={id ? `${id}-label` : undefined}
+				/>
+				<p style={{ margin: "6px 0 0", opacity: 0.75, fontSize: "0.9em" }}>
+					Text and pictures are edited here. For layout — columns, cards, galleries, embeds — open the page with <strong>Edit</strong> on and build it there.{" "}
+					{pageLink}
+				</p>
+			</div>
+		);
+	}
+
 	const headings: string[] = [];
 	const walk = (nodes: unknown) => {
 		if (!Array.isArray(nodes)) return;
@@ -175,11 +247,10 @@ function BuilderField({ value, label }: { value: unknown; label?: string; id?: s
 		<div style={{ border: "1px solid rgba(127,127,127,0.35)", borderRadius: 8, padding: "12px 14px", lineHeight: 1.5 }}>
 			<div style={{ fontWeight: 600, marginBottom: 4 }}>{label ?? "Content"}</div>
 			<p style={{ margin: "0 0 8px" }}>
-				Built in the page builder. Open it on the site with <strong>Live View</strong> (for a header or footer, any page), switch on{" "}
-				<strong>Edit</strong> in the toolbar, and edit it there. It isn't edited here, so this form can't change or damage it.
+				Built in the page builder — it has layout this form can't show. Open the page with <strong>Edit</strong> on in the toolbar and edit it there; this form leaves it alone, so it can't damage it. {pageLink}
 			</p>
 			<p style={{ margin: 0, opacity: 0.75, fontSize: "0.9em" }}>
-				{blocks.length === 0 ? "Empty so far." : `${blocks.length} top-level block${blocks.length === 1 ? "" : "s"}${headings.length ? ` — ${headings.slice(0, 5).join(" · ")}${headings.length > 5 ? " …" : ""}` : ""}.`}
+				{`${blocks.length} top-level block${blocks.length === 1 ? "" : "s"}${headings.length ? ` — ${headings.slice(0, 5).join(" · ")}${headings.length > 5 ? " …" : ""}` : ""}.`}
 			</p>
 		</div>
 	);
