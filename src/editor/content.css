@@ -352,6 +352,13 @@ html.pb-dragging .pb-handle {
 	rotate: -1deg;
 	transition: rotate 120ms;
 }
+/* The ghost is a copy of the block: parts of a shared or site block's preview
+   (its label, an embedded editor, a field edited in place) switch pointer
+   events back on, and the pointer would then hit the ghost instead of the page
+   under it — so no drop point could ever be found for those blocks. */
+.pb-drag-ghost * {
+	pointer-events: none !important;
+}
 .pb-drag-ghost > :first-child {
 	margin: 0 !important;
 	float: none !important;

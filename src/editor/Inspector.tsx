@@ -394,6 +394,25 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 						<Select value={String(a.variant ?? "")} onChange={(variant) => set({ variant })} options={config.buttonStyles.map((s) => ({ label: s.label, value: s.name }))} />
 					</Field>
 					<Toggle checked={a.newTab === true} onChange={(newTab) => set({ newTab })} label="Open in a new tab" />
+					{(() => {
+						// The row of buttons this one sits in: its alignment is what an
+						// editor who clicked the button is usually after.
+						const $at = editor.state.doc.resolve(live.pos);
+						const row = $at.depth > 0 && $at.parent.type.name === "pbButtons" ? { node: $at.parent, pos: $at.before(), depth: live.depth - 1 } : null;
+						return row ? (
+							<Field label="Alignment (whole row)">
+								<Segmented
+									value={String(row.node.attrs.align ?? "left")}
+									onChange={(align) => setAttrs(editor, row, { align })}
+									options={[
+										{ label: "Left", value: "left" },
+										{ label: "Centre", value: "center" },
+										{ label: "Right", value: "right" },
+									]}
+								/>
+							</Field>
+						) : null;
+					})()}
 				</Group>
 			)}
 

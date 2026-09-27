@@ -116,9 +116,46 @@ export function duplicate(editor: Editor, ref: BlockRef) {
 	editor.view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, at)));
 }
 
+/** Containers that go away with the last empty line inside them. */
+const EMPTIABLE = ["pbColumn", "pbSection", "pbCard", "pbLayer"];
+
+/**
+ * Delete a block. A container must keep at least one block, so deleting the
+ * only line of a column or section used to do nothing at all (ProseMirror
+ * put an empty line straight back). When that last line is empty, the
+ * container itself goes: a column disappears (two columns become the
+ * other column's content, full width), an empty section or card is removed.
+ */
 export function remove(editor: Editor, ref: BlockRef) {
-	const node = editor.state.doc.nodeAt(ref.pos);
+	const { doc } = editor.state;
+	const node = doc.nodeAt(ref.pos);
 	if (!node) return;
+	const $at = doc.resolve(ref.pos);
+	const parent = $at.parent;
+	const lastLine = $at.depth > 0 && parent.childCount === 1 && node.isTextblock && node.content.size === 0;
+	if (lastLine && EMPTIABLE.includes(parent.type.name)) {
+		const parentPos = $at.before();
+		if (parent.type.name === "pbColumn") {
+			const $col = doc.resolve(parentPos);
+			const columns = $col.parent;
+			const columnsPos = $col.before();
+			if (columns.childCount > 2) {
+				editor.chain().focus().deleteRange({ from: parentPos, to: parentPos + parent.nodeSize }).run();
+			} else {
+				const other = columns.child($col.index() === 0 ? 1 : 0);
+				editor
+					.chain()
+					.focus()
+					.command(({ tr }) => {
+						tr.replaceWith(columnsPos, columnsPos + columns.nodeSize, other.content);
+						return true;
+					})
+					.run();
+			}
+			return;
+		}
+		return remove(editor, { node: parent, pos: parentPos, depth: ref.depth - 1 });
+	}
 	editor.chain().focus().deleteRange({ from: ref.pos, to: ref.pos + node.nodeSize }).run();
 }
 

@@ -87,9 +87,11 @@
 /* Buttons */
 :where(.pb-buttons--center) {
 	justify-content: center;
+	align-items: center;
 }
 :where(.pb-buttons--right) {
 	justify-content: flex-end;
+	align-items: flex-end;
 }
 
 /* Accordion */
