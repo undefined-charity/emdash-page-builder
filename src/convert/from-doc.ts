@@ -277,7 +277,7 @@ function convertNode(node: JSONContent, config: BuilderConfig, out: PTBlock[]) {
 			out.push({ _type: "pb.spacer", _key: newKey(), size: a.size ?? "m", ...hideOf(a) });
 			return;
 		case "pbReusable":
-			out.push({ _type: "pb.reusable", _key: a.key || newKey(), ref: a.ref ?? "", ...(a.title ? { title: a.title } : {}), ...hideOf(a) });
+			out.push({ _type: "pb.reusable", _key: a.key || newKey(), ref: a.ref ?? "", ...(a.title ? { title: a.title } : {}), ...(a.align ? { align: a.align } : {}), ...hideOf(a) });
 			return;
 		case "pbExternal": {
 			// EmDash's admin editor adds an empty `id` to blocks it passes through.

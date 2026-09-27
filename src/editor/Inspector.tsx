@@ -668,6 +668,18 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 
 			{type === "pbReusable" && (
 				<Group title="Shared block">
+					<Field label="Position on this page" hint="Only here; other pages using this block keep their own.">
+						<Segmented
+							value={String(a.align || "full")}
+							onChange={(v) => set({ align: v === "full" ? "" : v })}
+							options={[
+								{ label: "Full width", value: "full" },
+								{ label: "Left", value: "left" },
+								{ label: "Centre", value: "center" },
+								{ label: "Right", value: "right" },
+							]}
+						/>
+					</Field>
 					<p className="pb-hint">This block is shared: editing it changes it on every page that uses it. Use the buttons on the block to edit the shared copy or detach this one.</p>
 				</Group>
 			)}

@@ -422,3 +422,13 @@ test("a new page starts from the site's template, titled, keyed and valid", () =
 	const plain = newPageBlocks(resolveConfig({}).pages, "About");
 	assert.equal((plain[1] as { children: Array<{ text: string }> }).children[0].text, "");
 });
+
+test("a shared block keeps its position on the page, and the renderer is told", () => {
+	const blocks = [{ _type: "pb.reusable", _key: "r2", ref: "abc", title: "CTA", align: "center" }];
+	assert.deepEqual(normalize(docToPortableText(portableTextToDoc(blocks, config), config)), normalize(blocks));
+	const { slots } = renderDocument(blocks, config);
+	assert.equal(slots[0]?.kind === "reusable" ? slots[0].align : null, "center");
+	// No position is the default and is not written.
+	const plain = docToPortableText(portableTextToDoc([{ _type: "pb.reusable", _key: "r3", ref: "abc", title: "CTA" }], config), config);
+	assert.equal("align" in plain[0], false);
+});

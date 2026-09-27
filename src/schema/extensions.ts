@@ -595,7 +595,8 @@ const Reusable = Node.create({
 	atom: true,
 	draggable: true,
 	addAttributes() {
-		return { ref: { default: "", ...noDom }, title: { default: "", ...noDom }, key: { default: "", ...noDom } };
+		// `align`: where the block sits on this page — "" (full width, as is), left, center or right.
+		return { ref: { default: "", ...noDom }, title: { default: "", ...noDom }, key: { default: "", ...noDom }, align: { default: "", ...noDom } };
 	},
 	parseHTML: () => [{ tag: "div[data-pb-reusable]" }],
 	renderHTML: ({ node }) => ["div", { "data-pb-reusable": node.attrs.ref }],

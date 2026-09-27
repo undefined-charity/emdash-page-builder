@@ -216,7 +216,7 @@ function makeReusableView(ctx: ViewContext) {
 					</span>
 				</div>
 				{html ? (
-					<div className="pb-ed-atom__preview" contentEditable={false} dangerouslySetInnerHTML={{ __html: html }} />
+					<div className={cls("pb-ed-atom__preview", node.attrs.align && `pb-reusable--${node.attrs.align}`)} contentEditable={false} dangerouslySetInnerHTML={{ __html: html }} />
 				) : (
 					<div className="pb-ed-atom__placeholder" contentEditable={false}>
 						Shared block “{title}”. The preview appears after it saves.

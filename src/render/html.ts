@@ -15,7 +15,7 @@ import { cleanHide, type HideOn } from "../schema/style.js";
 
 export type Slot =
 	| { kind: "external"; key: string; block: PTBlock; hide?: HideOn; anim?: Record<string, string> }
-	| { kind: "reusable"; key: string; ref: string; title: string; hide?: HideOn; anim?: Record<string, string> };
+	| { kind: "reusable"; key: string; ref: string; title: string; align?: string; hide?: HideOn; anim?: Record<string, string> };
 
 export interface RenderedDocument {
 	/** HTML fragments; `slots[i]` goes between `parts[i]` and `parts[i + 1]`. */
@@ -50,7 +50,7 @@ export function renderDocument(value: unknown, config: BuilderConfig): RenderedD
 		}
 		if (node.type === "pbReusable") {
 			const a = node.attrs ?? {};
-			slots.push({ kind: "reusable", key: a.key, ref: a.ref, title: a.title, hide: cleanHide(a.pbHide), anim: animationAttrs(a.pbAnim) });
+			slots.push({ kind: "reusable", key: a.key, ref: a.ref, title: a.title, ...(a.align ? { align: a.align } : {}), hide: cleanHide(a.pbHide), anim: animationAttrs(a.pbAnim) });
 			return { type: "pbSlotMarker", attrs: { index: slots.length - 1 } };
 		}
 		return node.content ? { ...node, content: node.content.map(walk) } : node;

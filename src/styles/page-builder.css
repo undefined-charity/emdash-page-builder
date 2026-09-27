@@ -94,6 +94,22 @@
 	align-items: flex-end;
 }
 
+/* A shared block placed on a page: left, centred or right, shrunk to its
+   content; without a position it is as wide as the page (the default). */
+:where(.pb-reusable--left, .pb-reusable--center, .pb-reusable--right) {
+	display: flex;
+	flex-direction: column;
+}
+:where(.pb-reusable--left) {
+	align-items: flex-start;
+}
+:where(.pb-reusable--center) {
+	align-items: center;
+}
+:where(.pb-reusable--right) {
+	align-items: flex-end;
+}
+
 /* Accordion */
 :where(.pb-accordion__body) {
 	display: flow-root;

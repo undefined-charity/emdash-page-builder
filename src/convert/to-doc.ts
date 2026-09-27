@@ -304,7 +304,7 @@ function convertOne(b: PTBlock, config: BuilderConfig): JSONContent {
 		case "pb.spacer":
 			return { type: "pbSpacer", attrs: { size: typeof b.size === "string" ? b.size : "m", ...hideAttr(b) } };
 		case "pb.reusable":
-			return { type: "pbReusable", attrs: { ref: b.ref ?? "", title: b.title ?? "", key: b._key ?? newKey(), ...hideAttr(b) } };
+			return { type: "pbReusable", attrs: { ref: b.ref ?? "", title: b.title ?? "", key: b._key ?? newKey(), align: typeof b.align === "string" ? b.align : "", ...hideAttr(b) } };
 		default: {
 			const { _type, _key, pbHide, pbAnim, ...data } = b;
 			return { type: "pbExternal", attrs: { blockType: _type, key: _key ?? newKey(), data, ...hideAttr({ pbHide, pbAnim }) } };
