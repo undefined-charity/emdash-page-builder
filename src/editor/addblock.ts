@@ -22,6 +22,8 @@ function addRow(pos: number, onAdd: (pos: number, at: DOMRect) => void, label: s
 			button.type = "button";
 			button.className = "pb-add-row";
 			button.contentEditable = "false";
+			// Where the row is in the document, so a block dragged onto it lands there (drag.ts).
+			button.dataset.pbPos = String(pos);
 			button.textContent = `+ ${label}`;
 			button.title = "Add a block here";
 			button.addEventListener("mousedown", (e) => e.preventDefault());

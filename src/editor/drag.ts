@@ -15,8 +15,12 @@ import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 
 // ── Where it will land ────────────────────────────────────────────────────────
 
-/** A drop point: between two blocks (`gap`), or beside one (`left`/`right`). */
-export type Drop = { kind: "gap"; pos: number } | { kind: "left" | "right"; pos: number };
+/**
+ * A drop point: between two blocks (`gap`), or beside one (`left`/`right`).
+ * A gap may name an empty line to take the block's place (`replace`): the
+ * filler an empty container holds, so dropping into it leaves no blank line.
+ */
+export type Drop = { kind: "gap"; pos: number; replace?: { from: number; to: number } } | { kind: "left" | "right"; pos: number };
 
 interface DragState {
 	source: { pos: number; size: number } | null;
@@ -108,6 +112,24 @@ export function dropAt(view: EditorView, source: { pos: number; size: number }, 
 	const doc = view.state.doc;
 	const src = doc.nodeAt(source.pos);
 	if (!src) return null;
+	// Over a container's "+ Add block" row: the block goes at the end of that
+	// container. An empty column or section is mostly this row, so without
+	// it there would be almost nowhere to drop.
+	const row = el.closest<HTMLElement>(".pb-add-row");
+	if (row) {
+		const pos = Number(row.dataset.pbPos);
+		if (!Number.isFinite(pos) || pos > doc.content.size) return null;
+		if (pos > source.pos && pos < source.pos + source.size) return null;
+		const $end = doc.resolve(pos);
+		const parent = $end.parent;
+		const parentPos = $end.depth === 0 ? -1 : $end.before();
+		if (!canMove(doc, source.pos, src, parent, parentPos, $end.index())) return null;
+		// Dropping it where it already is does nothing: show no gap.
+		if (pos === source.pos + source.size) return null;
+		const last = $end.nodeBefore;
+		const empty = last?.type.name === "paragraph" && last.content.size === 0 && !(pos - last.nodeSize === source.pos);
+		return { kind: "gap", pos, ...(empty ? { replace: { from: pos - last.nodeSize, to: pos } } : {}) };
+	}
 	const hit = view.posAtCoords({ left: x, top: y });
 	if (!hit) return null;
 
@@ -173,8 +195,14 @@ export function moveTo(editor: Editor, source: { pos: number; size: number }, dr
 	let landed: number;
 
 	if (drop.kind === "gap") {
-		tr = tr.insert(drop.pos, node);
-		landed = drop.pos;
+		if (drop.replace) {
+			// The empty line an otherwise empty container was holding makes way.
+			tr = tr.replaceWith(drop.replace.from, drop.replace.to, node);
+			landed = drop.replace.from;
+		} else {
+			tr = tr.insert(drop.pos, node);
+			landed = drop.pos;
+		}
 	} else {
 		const target = doc.nodeAt(drop.pos);
 		if (!target) return false;
