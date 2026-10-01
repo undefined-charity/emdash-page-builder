@@ -5,7 +5,7 @@
 import { findTextStyle, type BuilderConfig } from "../schema/config.js";
 import { cleanAnimation } from "../schema/animation.js";
 import { cleanGalleryImages } from "../schema/media.js";
-import { cleanBlockStyle, cleanFit, cleanHide, cleanPhoneStyle } from "../schema/style.js";
+import { cleanBlockStyle, cleanFit, cleanHide, cleanListGap, cleanPhoneStyle } from "../schema/style.js";
 import { newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
 /** Hiding on a screen and entrance animation, which any block can have. */
@@ -92,8 +92,14 @@ function textBlock(node: JSONContent, config: BuilderConfig, extra: Partial<PTTe
 	};
 }
 
+/** A list's own settings: its style and the space between its rows. */
+function listStyleOf(attrs: Record<string, unknown> | undefined) {
+	const gap = cleanListGap(attrs?.pbListGap);
+	return { ...styleOf(attrs), ...(gap ? { pbListGap: gap } : {}) };
+}
+
 /** A list is a run of blocks; each carries the list's style, so it survives however the run is split. */
-function listToBlocks(list: JSONContent, level: number, config: BuilderConfig, out: PTBlock[], runStyle = styleOf(list.attrs)) {
+function listToBlocks(list: JSONContent, level: number, config: BuilderConfig, out: PTBlock[], runStyle = listStyleOf(list.attrs)) {
 	const listItem = list.type === "bulletList" ? "bullet" : "number";
 	for (const item of list.content ?? []) {
 		for (const child of item.content ?? []) {

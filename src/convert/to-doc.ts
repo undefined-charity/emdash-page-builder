@@ -10,7 +10,7 @@
 import { findTextStyle, headingLevelOf, type BuilderConfig } from "../schema/config.js";
 import { cleanAnimation } from "../schema/animation.js";
 import { cleanGalleryImages } from "../schema/media.js";
-import { cleanBlockStyle, cleanFit, cleanHide, cleanPhoneStyle, safeColor, safeFont, safeLength } from "../schema/style.js";
+import { cleanBlockStyle, cleanFit, cleanHide, cleanListGap, cleanPhoneStyle, safeColor, safeFont, safeLength } from "../schema/style.js";
 import { isTextBlock, newKey, type JSONContent, type PTBlock, type PTMarkDef, type PTSpan, type PTTextBlock } from "./types.js";
 
 const EMPTY_PARAGRAPH: JSONContent = { type: "paragraph" };
@@ -328,7 +328,9 @@ export function blocksToNodes(blocks: PTBlock[], config: BuilderConfig): JSONCon
 					i++;
 				} else break;
 			}
-			out.push(withRunStyle(listRun(run, type), run[0]));
+			const list = withRunStyle(listRun(run, type), run[0]);
+			const gap = cleanListGap((run[0] as unknown as Record<string, unknown>).pbListGap);
+			out.push(gap ? { ...list, attrs: { ...list.attrs, pbListGap: gap } } : list);
 		} else if (isTextBlock(b) && b.style === "blockquote") {
 			const paragraphs: JSONContent[] = [];
 			const first = b;

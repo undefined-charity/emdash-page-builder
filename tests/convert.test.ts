@@ -432,3 +432,17 @@ test("a shared block keeps its position on the page, and the renderer is told", 
 	const plain = docToPortableText(portableTextToDoc([{ _type: "pb.reusable", _key: "r3", ref: "abc", title: "CTA" }], config), config);
 	assert.equal("align" in plain[0], false);
 });
+
+test("a list keeps the space chosen between its rows, and renders it as a class", () => {
+	const item = (key: string, text: string, extra: Record<string, unknown> = {}) => ({ _type: "block", _key: key, style: "normal", listItem: "number", level: 1, markDefs: [], children: [span(text)], ...extra });
+	const blocks = [item("a", "one", { pbListGap: "roomy" }), item("b", "two", { pbListGap: "roomy" })];
+	const once = docToPortableText(portableTextToDoc(blocks, config), config);
+	assert.deepEqual(once.map((b) => (b as Record<string, unknown>).pbListGap), ["roomy", "roomy"]);
+	assert.match(renderDocument(blocks, config).parts.join(""), /<ol class="pb-list--roomy">/);
+	// No choice: nothing is written and the list has no class.
+	const plain = [item("c", "one"), item("d", "two")];
+	assert.equal("pbListGap" in docToPortableText(portableTextToDoc(plain, config), config)[0], false);
+	assert.match(renderDocument(plain, config).parts.join(""), /<ol>/);
+	// Anything that isn't one of the choices is dropped.
+	assert.match(renderDocument([item("e", "one", { pbListGap: "huge; color:red" })], config).parts.join(""), /<ol>/);
+});

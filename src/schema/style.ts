@@ -154,6 +154,13 @@ export function cleanHide(v: unknown): HideOn | undefined {
 	return v === "phone" || v === "desktop" ? v : undefined;
 }
 
+/** Space between a list's rows, chosen on the list: nothing means the site's own. */
+export type ListGap = "tight" | "roomy" | "airy";
+
+export function cleanListGap(v: unknown): ListGap | undefined {
+	return v === "tight" || v === "roomy" || v === "airy" ? v : undefined;
+}
+
 /**
  * Phone-only overrides: the block style, plus text alignment and (for images)
  * width and position. Applied below the site's phone breakpoint, over the

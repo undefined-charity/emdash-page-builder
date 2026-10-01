@@ -16,7 +16,7 @@ import StarterKit from "@tiptap/starter-kit";
 import { defaultSectionStyle, findTextStyle, type BuilderConfig } from "./config.js";
 import { animationAttrs } from "./animation.js";
 import { GALLERY_LAYOUTS, embedDom, galleryDom, mapDom, mapLink, videoDom, videoSource } from "./media.js";
-import { blockStyleToCss, cleanBlockStyle, fitAttrs, cleanHide, phoneStyleAttrs, safeColor, safeLength, safeUrl } from "./style.js";
+import { blockStyleToCss, cleanBlockStyle, cleanListGap, fitAttrs, cleanHide, phoneStyleAttrs, safeColor, safeLength, safeUrl } from "./style.js";
 
 const noDom = { rendered: false } as const;
 const cls = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
@@ -109,6 +109,20 @@ const BlockStyles = Extension.create({
 						default: null,
 						parseHTML: () => null,
 						renderHTML: (attrs) => animationAttrs(attrs.pbAnim),
+					},
+				},
+			},
+			{
+				// A list's row spacing (Tight / Roomy / Airy), as a class the stylesheet turns into a gap.
+				types: ["bulletList", "orderedList"],
+				attributes: {
+					pbListGap: {
+						default: null,
+						parseHTML: () => null,
+						renderHTML: (attrs) => {
+							const gap = cleanListGap(attrs.pbListGap);
+							return gap ? { class: `pb-list--${gap}` } : {};
+						},
 					},
 				},
 			},

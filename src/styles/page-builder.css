@@ -110,6 +110,21 @@
 	align-items: flex-end;
 }
 
+/* Lists: the space between rows, chosen on the list. The gap is a variable so
+   a site's own list rule can use it too: `margin-top: var(--pb-list-gap, 0.4rem)`. */
+:where(.pb-list--tight) {
+	--pb-list-gap: 0;
+}
+:where(.pb-list--roomy) {
+	--pb-list-gap: 1rem;
+}
+:where(.pb-list--airy) {
+	--pb-list-gap: 1.75rem;
+}
+:where([class*="pb-list--"]) > li + li {
+	margin-top: var(--pb-list-gap);
+}
+
 /* Accordion */
 :where(.pb-accordion__body) {
 	display: flow-root;

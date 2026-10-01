@@ -238,7 +238,12 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 	const a = node.attrs as Record<string, unknown>;
 	const set = (patch: Record<string, unknown>) => setAttrs(editor, live, patch);
 	const type = node.type.name;
-	const stylable = STYLABLE_TYPES.includes(type);
+	// A row of a list has no look of its own: a list is stored as a run of
+	// rows that all carry the list's style, so anything set on one row would
+	// be lost on save. Its look is the list's.
+	const $live = editor.state.doc.resolve(live.pos);
+	const listRow = $live.depth > 0 && $live.parent.type.name === "listItem";
+	const stylable = STYLABLE_TYPES.includes(type) && !listRow;
 	// In the phone view, looks are set for phones only.
 	const phone = useDevice() === "phone";
 	const phoneStyle: PhoneStyle = cleanPhoneStyle(a.pbStylePhone) ?? {};
@@ -359,6 +364,26 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 			{type === "pbAccordionItem" && (
 				<Group title="Question">
 					<Toggle checked={a.open === true} onChange={(open) => set({ open })} label="Open when the page loads" />
+				</Group>
+			)}
+
+			{listRow && <p className="pb-hint">This is a row of a list. Colours, spacing and when it shows are set for the whole list: click the list's name in the trail above.</p>}
+
+			{(type === "bulletList" || type === "orderedList") && (
+				<Group title="List">
+					<Field label="Space between rows" hint="For the whole list. Normal is the site's own spacing.">
+						<Segmented
+							value={String(a.pbListGap ?? "normal")}
+							onChange={(v) => set({ pbListGap: v === "normal" ? null : v })}
+							options={[
+								{ label: "Tight", value: "tight" },
+								{ label: "Normal", value: "normal" },
+								{ label: "Roomy", value: "roomy" },
+								{ label: "Airy", value: "airy" },
+							]}
+						/>
+					</Field>
+					<p className="pb-hint">To get here from a row: click the row, then “{type === "bulletList" ? "Bulleted list" : "Numbered list"}” in the trail above.</p>
 				</Group>
 			)}
 
@@ -684,9 +709,9 @@ function BlockPanel({ editor, config, block, onPickImage, onPickVideo, onPickIma
 				</Group>
 			)}
 
-			{HIDEABLE_TYPES.includes(type) && <AnimationSettings editor={editor} block={live} value={cleanAnimation(a.pbAnim)} onChange={(pbAnim) => set({ pbAnim: pbAnim ?? null })} />}
+			{HIDEABLE_TYPES.includes(type) && !listRow && <AnimationSettings editor={editor} block={live} value={cleanAnimation(a.pbAnim)} onChange={(pbAnim) => set({ pbAnim: pbAnim ?? null })} />}
 
-			{HIDEABLE_TYPES.includes(type) && (
+			{HIDEABLE_TYPES.includes(type) && !listRow && (
 				<Group title="Show on" defaultOpen={Boolean(a.pbHide)}>
 					<Segmented
 						value={cleanHide(a.pbHide) ?? "both"}
